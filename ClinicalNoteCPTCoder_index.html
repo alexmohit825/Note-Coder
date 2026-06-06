@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clinical Note CPT Coder & Optimizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ['Inter', 'sans-serif'] },
+            colors: {
+              navy: { 900: '#0f2d4a', 800: '#133756', 700: '#174162', 600: '#1c5278', 500: '#21638e' },
+              teal: { 50: '#ecfeff', 100: '#cffafe', 200: '#a5f3fc', 300: '#67e8f9', 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490', 800: '#155e75', 900: '#164e63' },
+              slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
+              clinical: {
+                green: { light: '#dcfce7', DEFAULT: '#22c55e', dark: '#15803d' },
+                yellow: { light: '#fef9c3', DEFAULT: '#eab308', dark: '#a16207' },
+                orange: { light: '#ffedd5', DEFAULT: '#f97316', dark: '#c2410c' },
+                red: { light: '#fee2e2', DEFAULT: '#ef4444', dark: '#b91c1c' },
+              }
+            },
+          }
+        }
+      };
+    </script>
+    <style>
+      :root { --navy:#0f2d4a;--teal:#0891b2;--teal-dark:#0e7490;--teal-light:#ecfeff;--bg:#f1f5f9;--white:#fff; }
+      *{box-sizing:border-box}
+      body{font-family:'Inter',sans-serif;background:var(--bg);color:#1e293b;margin:0}
+
+      .patient-btn {
+        padding: 10px 22px;
+        border-radius: 999px;
+        border: 2px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+        min-height: 44px;
+        flex: 1;
+        text-align: center;
+      }
+
+      .tab-btn-result{transition:all .15s ease;border-bottom:3px solid transparent}
+      .fade-in{animation:fadeIn .2s ease forwards;opacity:0}
+      @keyframes fadeIn{to{opacity:1}}
+      .level-badge{display:inline-flex;align-items:center;justify-content:center;padding:.5rem 1.5rem;border-radius:1rem;font-size:2rem;font-weight:700;letter-spacing:.05em}
+      .level-gray{background:#e2e8f0;color:#475569}
+      .level-yellow{background:#fef9c3;color:#a16207}
+      .level-teal{background:#cffafe;color:#0e7490}
+      .level-green{background:#dcfce7;color:#15803d}
+      .score-cell-minimal{background:#fee2e2;color:#b91c1c}
+      .score-cell-low{background:#ffedd5;color:#c2410c}
+      .score-cell-moderate{background:#fef9c3;color:#a16207}
+      .score-cell-high{background:#dcfce7;color:#15803d}
+      textarea:focus,select:focus,input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(8,145,178,.15)}
+      .optimized-note{white-space:pre-wrap;font-family:'Inter',monospace;font-size:.85rem;line-height:1.7}
+      .confidence-bar{height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden}
+      .confidence-fill{height:100%;border-radius:4px;transition:width .6s ease}
+      #results-panel{transition:opacity .2s ease}
+      .scroll-area{overflow-y:auto;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+      .scroll-area::-webkit-scrollbar{width:6px}
+      .scroll-area::-webkit-scrollbar-track{background:transparent}
+      .scroll-area::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+      .evidence-quote{border-left:3px solid #0891b2;background:#f0fdfa;padding:.5rem .75rem;margin:.25rem 0;font-size:.8rem;color:#334155;border-radius:0 .5rem .5rem 0}
+      @media(max-width:767px){
+        .main-grid{grid-template-columns:1fr!important}
+        .scroll-area{max-height:none!important;overflow-y:visible!important}
+      }
+    </style>
+</head>
+<body data-id="0" class="min-h-screen flex flex-col">
+    <app-icon data-id="1" hidden data-icon="heart-pulse" data-palette="Blue"></app-icon>
+    <app-disclaimer data-id="2" intent="medical"></app-disclaimer>
+
+    <header data-id="3" class="bg-navy-900 text-white px-4 md:px-8 py-4 flex items-center gap-3 shadow-lg relative z-30">
+        <div data-id="4" class="flex items-center gap-3">
+            <div data-id="5" class="bg-teal-600 rounded-xl p-2"><i data-id="6" data-lucide="stethoscope" class="w-6 h-6 text-white"></i></div>
+            <div data-id="7">
+                <h1 data-id="8" class="text-lg md:text-xl font-bold tracking-tight">Clinical Note CPT Coder & Optimizer</h1>
+                <p data-id="9" class="text-xs text-teal-300 font-medium">2021 AMA E&M Guidelines Engine</p>
+            </div>
+        </div>
+        <button data-id="10" id="mobile-menu-btn" class="md:hidden ml-auto p-2 rounded-lg hover:bg-navy-700"><i data-id="11" data-lucide="menu" class="w-6 h-6"></i></button>
+        <nav data-id="12" class="hidden md:flex items-center ml-auto gap-4 text-sm">
+            <button data-id="13" id="nav-analyze-btn" class="text-teal-300 hover:text-white flex items-center gap-1 font-medium"><i data-id="14" data-lucide="scan-search" class="w-4 h-4"></i> Analyze</button>
+            <button data-id="15" id="nav-reset-btn" class="text-slate-300 hover:text-white flex items-center gap-1 font-medium"><i data-id="16" data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset</button>
+        </nav>
+    </header>
+
+    <nav data-id="17" id="mobile-menu" class="hidden fixed inset-0 bg-navy-900/95 z-50 flex flex-col p-6">
+        <button data-id="18" id="mobile-menu-close" class="self-end p-2 text-white"><i data-id="19" data-lucide="x" class="w-6 h-6"></i></button>
+        <div data-id="20" class="flex flex-col gap-4 mt-8">
+            <button data-id="21" id="mob-analyze-btn" class="text-teal-300 text-lg font-medium flex items-center gap-2"><i data-id="22" data-lucide="scan-search" class="w-5 h-5"></i> Analyze Note</button>
+            <button data-id="23" id="mob-reset-btn" class="text-slate-300 text-lg font-medium flex items-center gap-2"><i data-id="24" data-lucide="rotate-ccw" class="w-5 h-5"></i> Reset</button>
+        </div>
+    </nav>
+
+    <main data-id="25" class="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+        <div data-id="26" class="main-grid grid grid-cols-1 md:grid-cols-[45%_55%] gap-6 items-start">
+
+            <div data-id="27" class="bg-white rounded-3xl shadow-sm p-5 md:p-6 space-y-5">
+                <div data-id="28" class="flex items-center gap-2 text-navy-900">
+                    <i data-id="29" data-lucide="clipboard-list" class="w-5 h-5 text-teal-600"></i>
+                    <h2 data-id="30" class="text-lg font-semibold">Note Input</h2>
+                </div>
+
+                <div data-id="31">
+                    <label data-id="32" class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 block flex items-center gap-1">
+                        <i data-id="33" data-lucide="user" class="w-3.5 h-3.5"></i> Step 1: Patient Type
+                    </label>
+                    <div data-id="34" class="flex gap-2" id="patient-type-group">
+                        <button data-id="35" class="patient-btn" data-value="new">New Patient</button>
+                        <button data-id="36" class="patient-btn" data-value="established">Established Patient</button>
+                    </div>
+                    <p data-id="37" class="text-xs text-slate-400 mt-1" id="cpt-range-hint">CPT 99211–99215</p>
+                </div>
+
+                <div data-id="38">
+                    <label data-id="39" class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 block flex items-center gap-1" for="visit-type">
+                        <i data-id="40" data-lucide="building-2" class="w-3.5 h-3.5"></i> Step 2: Visit Type
+                    </label>
+                    <div data-id="41" class="relative">
+                        <select data-id="42" id="visit-type" class="w-full bg-slate-100 rounded-xl px-4 py-3 pr-10 text-sm font-medium text-slate-700 border border-slate-200 appearance-none cursor-pointer min-h-[44px]">
+                            <optgroup data-id="43" label="Office / Outpatient">
+                                <option data-id="44" value="office">Office/Outpatient Visit</option>
+                                <option data-id="45" value="telehealth">Telehealth/Virtual Visit</option>
+                            </optgroup>
+                            <optgroup data-id="46" label="Consultations">
+                                <option data-id="47" value="consult-outpatient">Outpatient Consult (99241–99245)</option>
+                                <option data-id="48" value="consult-inpatient">Inpatient Consult (99251–99255)</option>
+                            </optgroup>
+                            <optgroup data-id="49" label="Hospital / Inpatient">
+                                <option data-id="50" value="inpatient-initial">Inpatient Hospital Visit (Initial)</option>
+                                <option data-id="51" value="inpatient-subsequent">Subsequent Hospital Care</option>
+                            </optgroup>
+                            <optgroup data-id="52" label="Emergency">
+                                <option data-id="53" value="ed">Emergency Department</option>
+                            </optgroup>
+                            <optgroup data-id="54" label="Nursing Facility">
+                                <option data-id="55" value="nf-initial">Nursing Facility (Initial)</option>
+                                <option data-id="56" value="nf-subsequent">Nursing Facility (Subsequent)</option>
+                            </optgroup>
+                            <optgroup data-id="57" label="Preventive Medicine">
+                                <option data-id="58" value="preventive-new">Preventive Medicine — New Patient</option>
+                                <option data-id="59" value="preventive-established">Preventive Medicine — Established Patient</option>
+                            </optgroup>
+                        </select>
+                        <i data-id="60" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div data-id="61" id="age-input-group" class="hidden">
+                    <label data-id="62" class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 block flex items-center gap-1" for="patient-age">
+                        <i data-id="63" data-lucide="calendar" class="w-3.5 h-3.5"></i> Patient Age (for preventive coding)
+                    </label>
+                    <input data-id="64" type="number" id="patient-age" min="0" max="120" value="45" class="w-full bg-slate-100 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 border border-slate-200 min-h-[44px]" placeholder="Enter patient age" />
+                </div>
+
+                <div data-id="65">
+                    <label data-id="66" class="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2 block flex items-center gap-1" for="clinical-note">
+                        <i data-id="67" data-lucide="file-text" class="w-3.5 h-3.5"></i> Step 3: Paste Clinic Note
+                    </label>
+                    <textarea data-id="68" id="clinical-note" class="w-full bg-slate-50 rounded-xl px-4 py-3 text-sm text-slate-800 border border-slate-200 resize-y leading-relaxed" style="min-height:300px" placeholder="Paste your complete clinic note here. Include all sections: Chief Complaint, HPI, Review of Systems, Physical Exam, Assessment, Plan, etc."></textarea>
+                </div>
+
+                <div data-id="69" class="flex flex-col sm:flex-row gap-3">
+                    <button data-id="70" id="analyze-btn" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl px-6 py-3 flex items-center justify-center gap-2 min-h-[44px] transition-colors shadow-md shadow-teal-600/20">
+                        <i data-id="71" data-lucide="scan-search" class="w-5 h-5"></i> Analyze Note
+                    </button>
+                    <div data-id="72" class="flex-1 relative">
+                        <button data-id="73" id="sample-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl px-6 py-3 flex items-center justify-center gap-2 min-h-[44px] transition-colors border border-slate-200">
+                            <i data-id="74" data-lucide="flask-conical" class="w-4 h-4"></i> Load Sample Note <i data-id="75" data-lucide="chevron-down" class="w-3 h-3 ml-1"></i>
+                        </button>
+                        <div data-id="76" id="sample-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-20 overflow-hidden">
+                            <button data-id="77" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium" data-sample="office-moderate">Office Visit — Moderate (HTN/DM)</button>
+                            <button data-id="78" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="office-high">Office Visit — High (CHF Exacerbation)</button>
+                            <button data-id="79" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="ed">Emergency Department Visit</button>
+                            <button data-id="80" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="nf">Nursing Facility Visit</button>
+                            <button data-id="81" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="telehealth">Telehealth Visit</button>
+                            <button data-id="82" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="consult-outpatient">Outpatient Consult — Cardiology</button>
+                            <button data-id="83" class="sample-option w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 text-slate-700 font-medium border-t border-slate-100" data-sample="consult-inpatient">Inpatient Consult — Nephrology (AKI)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div data-id="84" id="results-panel" class="hidden">
+                <div data-id="85" class="bg-white rounded-3xl shadow-sm overflow-hidden relative">
+                    <div data-id="86" class="flex border-b border-slate-200 px-2 overflow-x-auto">
+                        <button data-id="87" class="tab-btn-result px-3 py-3.5 text-xs sm:text-sm whitespace-nowrap min-h-[44px]" data-tab="tab-cpt">
+                            <i data-id="88" data-lucide="hash" class="w-4 h-4 inline -mt-0.5"></i> CPT Result
+                        </button>
+                        <button data-id="89" class="tab-btn-result px-3 py-3.5 text-xs sm:text-sm whitespace-nowrap min-h-[44px]" data-tab="tab-optimize">
+                            <i data-id="90" data-lucide="trending-up" class="w-4 h-4 inline -mt-0.5"></i> Optimize
+                        </button>
+                        <button data-id="91" class="tab-btn-result px-3 py-3.5 text-xs sm:text-sm whitespace-nowrap min-h-[44px]" data-tab="tab-ai-report">
+                            <i data-id="92" data-lucide="brain" class="w-4 h-4 inline -mt-0.5"></i> AI Report
+                        </button>
+                        <button data-id="93" class="tab-btn-result px-3 py-3.5 text-xs sm:text-sm whitespace-nowrap min-h-[44px]" data-tab="tab-reference">
+                            <i data-id="94" data-lucide="book-open" class="w-4 h-4 inline -mt-0.5"></i> Reference
+                        </button>
+                    </div>
+
+                    <div data-id="95" class="p-5 md:p-6 scroll-area" style="max-height: calc(100vh - 180px);">
+
+                        <!-- TAB 1: CPT CODE RESULT -->
+                        <div data-id="96" id="tab-cpt" class="tab-content fade-in space-y-6">
+                            <div data-id="97" class="text-center space-y-3">
+                                <div data-id="98" id="cpt-badge" class="level-badge level-teal text-4xl inline-block">99214</div>
+                                <p data-id="99" id="cpt-description" class="text-sm text-slate-600 font-medium"></p>
+                                <p data-id="100" id="cpt-summary" class="text-sm text-slate-500 max-w-lg mx-auto"></p>
+                                <p data-id="101" id="telehealth-modifier-note" class="hidden text-xs bg-teal-50 text-teal-700 rounded-lg px-3 py-2 max-w-md mx-auto"></p>
+                                <div data-id="102" id="consult-specialty-badge" class="hidden"><span data-id="103" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-full px-3 py-1.5"><i data-id="104" data-lucide="stethoscope" class="w-3.5 h-3.5"></i> <span data-id="105" id="consult-specialty-text">Detected Specialty: General</span></span></div>
+                            </div>
+                            <div data-id="106" id="cms-consult-notice" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                                <i data-id="107" data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                                <div data-id="108">
+                                    <p data-id="109" class="text-xs font-semibold text-amber-800 mb-1">CMS/Medicare Notice</p>
+                                    <p data-id="110" class="text-xs text-amber-700 leading-relaxed">CMS eliminated consultation codes (99241–99255) effective January 1, 2010. These codes are <strong data-id="111">not accepted by Medicare/Medicaid</strong>. For Medicare patients, use office/outpatient (99202–99215) or hospital care codes instead. Most commercial payers and some state Medicaid programs still accept consult codes — verify with the specific payer.</p>
+                                </div>
+                            </div>
+                            <div data-id="112">
+                                <div data-id="113" class="flex justify-between text-xs font-medium mb-1">
+                                    <span data-id="114" class="text-slate-500">Coding Confidence</span>
+                                    <span data-id="115" id="confidence-label" class="text-teal-600">High</span>
+                                </div>
+                                <div data-id="116" class="confidence-bar"><div data-id="117" id="confidence-fill" class="confidence-fill bg-teal-500" style="width:85%"></div></div>
+                            </div>
+                            <div data-id="118" id="preventive-info-panel" class="hidden bg-teal-50 rounded-2xl p-5 space-y-2">
+                                <div data-id="119" class="flex items-center gap-2"><i data-id="120" data-lucide="info" class="w-5 h-5 text-teal-600"></i><h3 data-id="121" class="text-sm font-semibold text-teal-800">Preventive Medicine Coding</h3></div>
+                                <p data-id="122" id="preventive-info-text" class="text-sm text-teal-700"></p>
+                            </div>
+                            <div data-id="123" id="mdm-section">
+                                <h3 data-id="124" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="125" data-lucide="bar-chart-3" class="w-4 h-4 text-teal-600"></i> MDM Scorecard</h3>
+                                <div data-id="126" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="127" class="w-full text-left text-sm">
+                                        <thead data-id="128" class="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                            <tr data-id="129"><th data-id="130" class="px-4 py-3">MDM Element</th><th data-id="131" class="px-4 py-3">Evidence Found</th><th data-id="132" class="px-4 py-3">Level Scored</th></tr>
+                                        </thead>
+                                        <tbody data-id="133" id="mdm-scorecard-body" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div data-id="134" id="consult-3rs-panel" class="hidden space-y-3">
+                                <h3 data-id="135" class="text-sm font-semibold text-navy-900 flex items-center gap-2"><i data-id="136" data-lucide="clipboard-check" class="w-4 h-4 text-teal-600"></i> Consult Requirements Check (The 3 R's)</h3>
+                                <div data-id="137" id="consult-3rs-warning" class="hidden bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+                                    <i data-id="138" data-lucide="alert-triangle" class="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"></i>
+                                    <p data-id="139" class="text-xs font-semibold text-red-700">This consult note is MISSING required documentation elements. The claim may be denied without all 3 R's.</p>
+                                </div>
+                                <div data-id="140" id="consult-3rs-body" class="space-y-2"></div>
+                            </div>
+                            <div data-id="141">
+                                <h3 data-id="142" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="143" data-lucide="check-circle" class="w-4 h-4 text-teal-600"></i> Documentation Completeness</h3>
+                                <div data-id="144" id="doc-completeness" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                            </div>
+                            <div data-id="145">
+                                <h3 data-id="146" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="147" data-lucide="activity" class="w-4 h-4 text-teal-600"></i> HPI Completeness (OLDCARTS)</h3>
+                                <div data-id="148" id="hpi-meter" class="space-y-2"></div>
+                            </div>
+                            <div data-id="149">
+                                <button data-id="150" id="rationale-toggle" class="flex items-center gap-2 text-sm font-semibold text-navy-900 w-full">
+                                    <i data-id="151" data-lucide="chevron-right" class="w-4 h-4 text-teal-600 transition-transform" id="rationale-chevron"></i> Coding Rationale
+                                </button>
+                                <div data-id="152" id="rationale-content" class="hidden mt-3 space-y-3 bg-slate-50 rounded-xl p-4 text-sm text-slate-700"></div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: OPTIMIZE -->
+                        <div data-id="153" id="tab-optimize" class="tab-content hidden fade-in space-y-6">
+                            <div data-id="154" id="optimization-target" class="bg-teal-50 rounded-2xl p-5 space-y-2">
+                                <div data-id="155" class="flex items-center gap-2"><i data-id="156" data-lucide="target" class="w-5 h-5 text-teal-600"></i><h3 data-id="157" class="text-sm font-semibold text-teal-800">Optimization Target</h3></div>
+                                <p data-id="158" id="target-cpt-text" class="text-sm text-teal-700"></p>
+                            </div>
+                            <div data-id="159">
+                                <h3 data-id="160" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="161" data-lucide="alert-triangle" class="w-4 h-4 text-clinical-orange"></i> Gap Analysis</h3>
+                                <div data-id="162" id="gap-analysis" class="space-y-3"></div>
+                            </div>
+                            <div data-id="163">
+                                <div data-id="164" class="flex items-center justify-between mb-3">
+                                    <h3 data-id="165" class="text-sm font-semibold text-navy-900 flex items-center gap-2"><i data-id="166" data-lucide="sparkles" class="w-4 h-4 text-teal-600"></i> Reformatted Optimized Note</h3>
+                                    <div data-id="167" class="flex gap-2">
+                                        <button data-id="168" id="copy-note-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg px-3 py-1.5 font-medium flex items-center gap-1 min-h-[32px]"><i data-id="169" data-lucide="copy" class="w-3.5 h-3.5"></i> Copy</button>
+                                        <button data-id="170" id="download-note-btn" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg px-3 py-1.5 font-medium flex items-center gap-1 min-h-[32px]"><i data-id="171" data-lucide="download" class="w-3.5 h-3.5"></i> Download .txt</button>
+                                    </div>
+                                </div>
+                                <div data-id="172" id="optimized-note" class="optimized-note bg-slate-50 rounded-2xl p-5 border border-slate-200 text-slate-800 max-h-[500px] overflow-y-auto"></div>
+                            </div>
+                            <div data-id="173" id="optimization-impact" class="bg-clinical-green-light rounded-2xl p-5 flex items-center gap-4 flex-wrap">
+                                <div data-id="174" class="flex items-center gap-2"><span data-id="175" class="text-sm font-medium text-slate-600">Original:</span><span data-id="176" id="impact-original" class="font-bold text-lg text-slate-700">99213</span></div>
+                                <i data-id="177" data-lucide="arrow-right" class="w-5 h-5 text-clinical-green-dark"></i>
+                                <div data-id="178" class="flex items-center gap-2"><span data-id="179" class="text-sm font-medium text-slate-600">Optimized:</span><span data-id="180" id="impact-optimized" class="font-bold text-lg text-clinical-green-dark">99215</span></div>
+                                <span data-id="181" id="impact-rvu" class="ml-auto text-xs font-medium text-clinical-green-dark bg-white/60 rounded-full px-3 py-1"></span>
+                            </div>
+                            <div data-id="182">
+                                <h3 data-id="183" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="184" data-lucide="diff" class="w-4 h-4 text-teal-600"></i> What Changed</h3>
+                                <ul data-id="185" id="what-changed" class="space-y-1.5 text-sm text-slate-700"></ul>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: AI ANALYSIS REPORT -->
+                        <div data-id="186" id="tab-ai-report" class="tab-content hidden fade-in space-y-6">
+                            <div data-id="187">
+                                <h3 data-id="188" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="189" data-lucide="brain" class="w-4 h-4 text-teal-600"></i> Executive Summary</h3>
+                                <div data-id="190" id="ai-exec-summary" class="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 leading-relaxed"></div>
+                            </div>
+                            <div data-id="191">
+                                <h3 data-id="192" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="193" data-lucide="heart-pulse" class="w-4 h-4 text-teal-600"></i> Detected Conditions</h3>
+                                <div data-id="194" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="195" class="w-full text-left text-xs">
+                                        <thead data-id="196" class="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500"><tr data-id="197"><th data-id="198" class="px-4 py-3">Condition</th><th data-id="199" class="px-4 py-3">Severity</th><th data-id="200" class="px-4 py-3">Status</th></tr></thead>
+                                        <tbody data-id="201" id="ai-conditions-body" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div data-id="202">
+                                <h3 data-id="203" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="204" data-lucide="pill" class="w-4 h-4 text-teal-600"></i> Detected Medications</h3>
+                                <div data-id="205" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="206" class="w-full text-left text-xs">
+                                        <thead data-id="207" class="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500"><tr data-id="208"><th data-id="209" class="px-4 py-3">Medication</th><th data-id="210" class="px-4 py-3">Action</th><th data-id="211" class="px-4 py-3">Risk Level</th></tr></thead>
+                                        <tbody data-id="212" id="ai-meds-body" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div data-id="213">
+                                <h3 data-id="214" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="215" data-lucide="test-tubes" class="w-4 h-4 text-teal-600"></i> Detected Data Elements</h3>
+                                <div data-id="216" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="217" class="w-full text-left text-xs">
+                                        <thead data-id="218" class="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500"><tr data-id="219"><th data-id="220" class="px-4 py-3">Data Element</th><th data-id="221" class="px-4 py-3">Category</th><th data-id="222" class="px-4 py-3">MDM Credit</th></tr></thead>
+                                        <tbody data-id="223" id="ai-data-body" class="divide-y divide-slate-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div data-id="224">
+                                <h3 data-id="225" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="226" data-lucide="shield-alert" class="w-4 h-4 text-clinical-orange"></i> Audit Risk Assessment</h3>
+                                <div data-id="227" id="ai-audit-risk" class="rounded-2xl border p-4 space-y-2"></div>
+                            </div>
+                            <div data-id="228">
+                                <h3 data-id="229" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="230" data-lucide="clipboard-check" class="w-4 h-4 text-teal-600"></i> Compliance Notes & Recommendations</h3>
+                                <div data-id="231" id="ai-compliance" class="space-y-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: CODING REFERENCE -->
+                        <div data-id="232" id="tab-reference" class="tab-content hidden fade-in space-y-6">
+                            <div data-id="233">
+                                <h3 data-id="234" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="235" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> 2021 AMA MDM Quick Reference</h3>
+                                <div data-id="236" class="bg-teal-50 rounded-2xl p-4 text-xs text-teal-800 space-y-2">
+                                    <p data-id="237" class="font-semibold">MDM is determined by the highest 2 of 3 elements:</p>
+                                    <p data-id="238"><strong data-id="239">Element 1:</strong> Number & Complexity of Problems Addressed</p>
+                                    <p data-id="240"><strong data-id="241">Element 2:</strong> Amount & Complexity of Data Reviewed/Analyzed</p>
+                                    <p data-id="242"><strong data-id="243">Element 3:</strong> Risk of Complications, Morbidity, or Mortality</p>
+                                    <p data-id="244" class="text-teal-600 mt-2">The final MDM level equals the second-highest element level (2-of-3 rule).</p>
+                                </div>
+                            </div>
+                            <div data-id="245">
+                                <h3 data-id="246" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="247" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Office/Outpatient — New Patient</h3>
+                                <div data-id="248" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="249" class="w-full text-left text-xs"><thead data-id="250" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="251"><th data-id="252" class="px-3 py-2.5">CPT</th><th data-id="253" class="px-3 py-2.5">MDM</th><th data-id="254" class="px-3 py-2.5">Problems</th><th data-id="255" class="px-3 py-2.5">Data</th><th data-id="256" class="px-3 py-2.5">Risk</th><th data-id="257" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="258" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="259" class="hover:bg-slate-50"><td data-id="260" class="px-3 py-2 font-mono font-bold">99202</td><td data-id="261" class="px-3 py-2">Straightforward</td><td data-id="262" class="px-3 py-2">Minimal</td><td data-id="263" class="px-3 py-2">Minimal/none</td><td data-id="264" class="px-3 py-2">Minimal</td><td data-id="265" class="px-3 py-2">15–29 min</td></tr>
+                                        <tr data-id="266" class="hover:bg-slate-50"><td data-id="267" class="px-3 py-2 font-mono font-bold">99203</td><td data-id="268" class="px-3 py-2">Low</td><td data-id="269" class="px-3 py-2">Low</td><td data-id="270" class="px-3 py-2">Limited</td><td data-id="271" class="px-3 py-2">Low</td><td data-id="272" class="px-3 py-2">30–44 min</td></tr>
+                                        <tr data-id="273" class="hover:bg-slate-50"><td data-id="274" class="px-3 py-2 font-mono font-bold">99204</td><td data-id="275" class="px-3 py-2">Moderate</td><td data-id="276" class="px-3 py-2">Moderate</td><td data-id="277" class="px-3 py-2">Moderate</td><td data-id="278" class="px-3 py-2">Moderate</td><td data-id="279" class="px-3 py-2">45–59 min</td></tr>
+                                        <tr data-id="280" class="hover:bg-slate-50"><td data-id="281" class="px-3 py-2 font-mono font-bold">99205</td><td data-id="282" class="px-3 py-2">High</td><td data-id="283" class="px-3 py-2">High</td><td data-id="284" class="px-3 py-2">Extensive</td><td data-id="285" class="px-3 py-2">High</td><td data-id="286" class="px-3 py-2">60–74 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="287">
+                                <h3 data-id="288" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="289" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Office/Outpatient — Established Patient</h3>
+                                <div data-id="290" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="291" class="w-full text-left text-xs"><thead data-id="292" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="293"><th data-id="294" class="px-3 py-2.5">CPT</th><th data-id="295" class="px-3 py-2.5">MDM</th><th data-id="296" class="px-3 py-2.5">Problems</th><th data-id="297" class="px-3 py-2.5">Data</th><th data-id="298" class="px-3 py-2.5">Risk</th><th data-id="299" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="300" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="301" class="hover:bg-slate-50"><td data-id="302" class="px-3 py-2 font-mono font-bold">99211</td><td data-id="303" class="px-3 py-2">N/A</td><td data-id="304" class="px-3 py-2">May not require MD</td><td data-id="305" class="px-3 py-2">—</td><td data-id="306" class="px-3 py-2">—</td><td data-id="307" class="px-3 py-2">—</td></tr>
+                                        <tr data-id="308" class="hover:bg-slate-50"><td data-id="309" class="px-3 py-2 font-mono font-bold">99212</td><td data-id="310" class="px-3 py-2">Straightforward</td><td data-id="311" class="px-3 py-2">Minimal</td><td data-id="312" class="px-3 py-2">Minimal/none</td><td data-id="313" class="px-3 py-2">Minimal</td><td data-id="314" class="px-3 py-2">10–19 min</td></tr>
+                                        <tr data-id="315" class="hover:bg-slate-50"><td data-id="316" class="px-3 py-2 font-mono font-bold">99213</td><td data-id="317" class="px-3 py-2">Low</td><td data-id="318" class="px-3 py-2">Low</td><td data-id="319" class="px-3 py-2">Limited</td><td data-id="320" class="px-3 py-2">Low</td><td data-id="321" class="px-3 py-2">20–29 min</td></tr>
+                                        <tr data-id="322" class="hover:bg-slate-50"><td data-id="323" class="px-3 py-2 font-mono font-bold">99214</td><td data-id="324" class="px-3 py-2">Moderate</td><td data-id="325" class="px-3 py-2">Moderate</td><td data-id="326" class="px-3 py-2">Moderate</td><td data-id="327" class="px-3 py-2">Moderate</td><td data-id="328" class="px-3 py-2">30–39 min</td></tr>
+                                        <tr data-id="329" class="hover:bg-slate-50"><td data-id="330" class="px-3 py-2 font-mono font-bold">99215</td><td data-id="331" class="px-3 py-2">High</td><td data-id="332" class="px-3 py-2">High</td><td data-id="333" class="px-3 py-2">Extensive</td><td data-id="334" class="px-3 py-2">High</td><td data-id="335" class="px-3 py-2">40–54 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="336">
+                                <h3 data-id="337" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="338" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Outpatient Consultation (99241–99245)</h3>
+                                <div data-id="339" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="340" class="w-full text-left text-xs"><thead data-id="341" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="342"><th data-id="343" class="px-3 py-2.5">CPT</th><th data-id="344" class="px-3 py-2.5">MDM</th><th data-id="345" class="px-3 py-2.5">Problems</th><th data-id="346" class="px-3 py-2.5">Data</th><th data-id="347" class="px-3 py-2.5">Risk</th><th data-id="348" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="349" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="350" class="hover:bg-slate-50"><td data-id="351" class="px-3 py-2 font-mono font-bold">99241</td><td data-id="352" class="px-3 py-2">Straightforward</td><td data-id="353" class="px-3 py-2">Minimal</td><td data-id="354" class="px-3 py-2">Minimal/none</td><td data-id="355" class="px-3 py-2">Minimal</td><td data-id="356" class="px-3 py-2">15 min</td></tr>
+                                        <tr data-id="357" class="hover:bg-slate-50"><td data-id="358" class="px-3 py-2 font-mono font-bold">99242</td><td data-id="359" class="px-3 py-2">Straightforward</td><td data-id="360" class="px-3 py-2">Minimal</td><td data-id="361" class="px-3 py-2">Minimal/limited</td><td data-id="362" class="px-3 py-2">Minimal</td><td data-id="363" class="px-3 py-2">30 min</td></tr>
+                                        <tr data-id="364" class="hover:bg-slate-50"><td data-id="365" class="px-3 py-2 font-mono font-bold">99243</td><td data-id="366" class="px-3 py-2">Low</td><td data-id="367" class="px-3 py-2">Low</td><td data-id="368" class="px-3 py-2">Limited</td><td data-id="369" class="px-3 py-2">Low</td><td data-id="370" class="px-3 py-2">40 min</td></tr>
+                                        <tr data-id="371" class="hover:bg-slate-50"><td data-id="372" class="px-3 py-2 font-mono font-bold">99244</td><td data-id="373" class="px-3 py-2">Moderate</td><td data-id="374" class="px-3 py-2">Moderate</td><td data-id="375" class="px-3 py-2">Moderate</td><td data-id="376" class="px-3 py-2">Moderate</td><td data-id="377" class="px-3 py-2">60 min</td></tr>
+                                        <tr data-id="378" class="hover:bg-slate-50"><td data-id="379" class="px-3 py-2 font-mono font-bold">99245</td><td data-id="380" class="px-3 py-2">High</td><td data-id="381" class="px-3 py-2">High</td><td data-id="382" class="px-3 py-2">Extensive</td><td data-id="383" class="px-3 py-2">High</td><td data-id="384" class="px-3 py-2">80 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="385">
+                                <h3 data-id="386" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="387" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Inpatient Consultation (99251–99255)</h3>
+                                <div data-id="388" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="389" class="w-full text-left text-xs"><thead data-id="390" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="391"><th data-id="392" class="px-3 py-2.5">CPT</th><th data-id="393" class="px-3 py-2.5">MDM</th><th data-id="394" class="px-3 py-2.5">Problems</th><th data-id="395" class="px-3 py-2.5">Data</th><th data-id="396" class="px-3 py-2.5">Risk</th><th data-id="397" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="398" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="399" class="hover:bg-slate-50"><td data-id="400" class="px-3 py-2 font-mono font-bold">99251</td><td data-id="401" class="px-3 py-2">Straightforward</td><td data-id="402" class="px-3 py-2">Minimal</td><td data-id="403" class="px-3 py-2">Minimal/none</td><td data-id="404" class="px-3 py-2">Minimal</td><td data-id="405" class="px-3 py-2">20 min</td></tr>
+                                        <tr data-id="406" class="hover:bg-slate-50"><td data-id="407" class="px-3 py-2 font-mono font-bold">99252</td><td data-id="408" class="px-3 py-2">Straightforward</td><td data-id="409" class="px-3 py-2">Minimal</td><td data-id="410" class="px-3 py-2">Minimal/limited</td><td data-id="411" class="px-3 py-2">Minimal</td><td data-id="412" class="px-3 py-2">40 min</td></tr>
+                                        <tr data-id="413" class="hover:bg-slate-50"><td data-id="414" class="px-3 py-2 font-mono font-bold">99253</td><td data-id="415" class="px-3 py-2">Low</td><td data-id="416" class="px-3 py-2">Low</td><td data-id="417" class="px-3 py-2">Limited</td><td data-id="418" class="px-3 py-2">Low</td><td data-id="419" class="px-3 py-2">55 min</td></tr>
+                                        <tr data-id="420" class="hover:bg-slate-50"><td data-id="421" class="px-3 py-2 font-mono font-bold">99254</td><td data-id="422" class="px-3 py-2">Moderate</td><td data-id="423" class="px-3 py-2">Moderate</td><td data-id="424" class="px-3 py-2">Moderate</td><td data-id="425" class="px-3 py-2">Moderate</td><td data-id="426" class="px-3 py-2">80 min</td></tr>
+                                        <tr data-id="427" class="hover:bg-slate-50"><td data-id="428" class="px-3 py-2 font-mono font-bold">99255</td><td data-id="429" class="px-3 py-2">High</td><td data-id="430" class="px-3 py-2">High</td><td data-id="431" class="px-3 py-2">Extensive</td><td data-id="432" class="px-3 py-2">High</td><td data-id="433" class="px-3 py-2">110 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="434">
+                                <h3 data-id="435" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="436" data-lucide="clipboard-check" class="w-4 h-4 text-teal-600"></i> Consultation Requirements — The 3 R's</h3>
+                                <div data-id="437" class="bg-teal-50 rounded-2xl p-4 text-xs text-teal-800 space-y-3">
+                                    <p data-id="438" class="font-semibold">All consultation codes (99241–99245, 99251–99255) require documentation of all 3 R's:</p>
+                                    <div data-id="439" class="space-y-2">
+                                        <p data-id="440"><strong data-id="441">R1 — REQUEST:</strong> The consult must be requested by another physician or qualified healthcare provider. Document who requested the consult and why.</p>
+                                        <p data-id="442"><strong data-id="443">R2 — RENDER:</strong> The consulting provider must personally evaluate the patient and document their findings, medical decision making, and recommendations.</p>
+                                        <p data-id="444"><strong data-id="445">R3 — REPORT:</strong> The consulting physician must communicate findings and recommendations back to the requesting provider. Document the method and recipient of communication.</p>
+                                    </div>
+                                    <p data-id="446" class="text-teal-600 mt-2 font-semibold">Missing any of the 3 R's may result in claim denial. All three must be clearly documented in the consultation note.</p>
+                                </div>
+                                <div data-id="447" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-3 flex items-start gap-3">
+                                    <i data-id="448" data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                                    <div data-id="449">
+                                        <p data-id="450" class="text-xs font-semibold text-amber-800 mb-1">CMS/Medicare Notice</p>
+                                        <p data-id="451" class="text-xs text-amber-700 leading-relaxed">CMS eliminated consultation codes (99241–99255) effective January 1, 2010. These codes are not accepted by Medicare/Medicaid. For Medicare patients, use office/outpatient (99202–99215) or hospital care codes instead. Most commercial payers and some state Medicaid programs still accept consult codes — verify with the specific payer.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div data-id="452">
+                                <h3 data-id="453" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="454" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Emergency Department</h3>
+                                <div data-id="455" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="456" class="w-full text-left text-xs"><thead data-id="457" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="458"><th data-id="459" class="px-3 py-2.5">CPT</th><th data-id="460" class="px-3 py-2.5">MDM Level</th><th data-id="461" class="px-3 py-2.5">Typical Presentation</th></tr></thead>
+                                    <tbody data-id="462" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="463" class="hover:bg-slate-50"><td data-id="464" class="px-3 py-2 font-mono font-bold">99281</td><td data-id="465" class="px-3 py-2">Minimal</td><td data-id="466" class="px-3 py-2">Self-limited/minor (e.g., insect bite)</td></tr>
+                                        <tr data-id="467" class="hover:bg-slate-50"><td data-id="468" class="px-3 py-2 font-mono font-bold">99282</td><td data-id="469" class="px-3 py-2">Low</td><td data-id="470" class="px-3 py-2">Low severity (e.g., simple laceration)</td></tr>
+                                        <tr data-id="471" class="hover:bg-slate-50"><td data-id="472" class="px-3 py-2 font-mono font-bold">99283</td><td data-id="473" class="px-3 py-2">Moderate</td><td data-id="474" class="px-3 py-2">Moderate severity (e.g., asthma exacerbation)</td></tr>
+                                        <tr data-id="475" class="hover:bg-slate-50"><td data-id="476" class="px-3 py-2 font-mono font-bold">99284</td><td data-id="477" class="px-3 py-2">Moderate-High</td><td data-id="478" class="px-3 py-2">High urgency (e.g., chest pain workup)</td></tr>
+                                        <tr data-id="479" class="hover:bg-slate-50"><td data-id="480" class="px-3 py-2 font-mono font-bold">99285</td><td data-id="481" class="px-3 py-2">High</td><td data-id="482" class="px-3 py-2">Threat to life/function (e.g., STEMI, stroke)</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="483">
+                                <h3 data-id="484" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="485" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Initial Inpatient / Observation</h3>
+                                <div data-id="486" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="487" class="w-full text-left text-xs"><thead data-id="488" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="489"><th data-id="490" class="px-3 py-2.5">CPT</th><th data-id="491" class="px-3 py-2.5">MDM</th><th data-id="492" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="493" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="494" class="hover:bg-slate-50"><td data-id="495" class="px-3 py-2 font-mono font-bold">99221</td><td data-id="496" class="px-3 py-2">Low/Straightforward</td><td data-id="497" class="px-3 py-2">40 min</td></tr>
+                                        <tr data-id="498" class="hover:bg-slate-50"><td data-id="499" class="px-3 py-2 font-mono font-bold">99222</td><td data-id="500" class="px-3 py-2">Moderate</td><td data-id="501" class="px-3 py-2">55 min</td></tr>
+                                        <tr data-id="502" class="hover:bg-slate-50"><td data-id="503" class="px-3 py-2 font-mono font-bold">99223</td><td data-id="504" class="px-3 py-2">High</td><td data-id="505" class="px-3 py-2">75 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="506">
+                                <h3 data-id="507" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="508" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Subsequent Inpatient / Observation</h3>
+                                <div data-id="509" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="510" class="w-full text-left text-xs"><thead data-id="511" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="512"><th data-id="513" class="px-3 py-2.5">CPT</th><th data-id="514" class="px-3 py-2.5">MDM</th><th data-id="515" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="516" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="517" class="hover:bg-slate-50"><td data-id="518" class="px-3 py-2 font-mono font-bold">99231</td><td data-id="519" class="px-3 py-2">Low/Straightforward</td><td data-id="520" class="px-3 py-2">25 min</td></tr>
+                                        <tr data-id="521" class="hover:bg-slate-50"><td data-id="522" class="px-3 py-2 font-mono font-bold">99232</td><td data-id="523" class="px-3 py-2">Moderate</td><td data-id="524" class="px-3 py-2">35 min</td></tr>
+                                        <tr data-id="525" class="hover:bg-slate-50"><td data-id="526" class="px-3 py-2 font-mono font-bold">99233</td><td data-id="527" class="px-3 py-2">High</td><td data-id="528" class="px-3 py-2">50 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="529">
+                                <h3 data-id="530" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="531" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Nursing Facility — Initial</h3>
+                                <div data-id="532" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="533" class="w-full text-left text-xs"><thead data-id="534" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="535"><th data-id="536" class="px-3 py-2.5">CPT</th><th data-id="537" class="px-3 py-2.5">MDM</th><th data-id="538" class="px-3 py-2.5">Time</th></tr></thead>
+                                    <tbody data-id="539" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="540" class="hover:bg-slate-50"><td data-id="541" class="px-3 py-2 font-mono font-bold">99304</td><td data-id="542" class="px-3 py-2">Low/Straightforward</td><td data-id="543" class="px-3 py-2">25 min</td></tr>
+                                        <tr data-id="544" class="hover:bg-slate-50"><td data-id="545" class="px-3 py-2 font-mono font-bold">99305</td><td data-id="546" class="px-3 py-2">Moderate</td><td data-id="547" class="px-3 py-2">35 min</td></tr>
+                                        <tr data-id="548" class="hover:bg-slate-50"><td data-id="549" class="px-3 py-2 font-mono font-bold">99306</td><td data-id="550" class="px-3 py-2">High</td><td data-id="551" class="px-3 py-2">50 min</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="552">
+                                <h3 data-id="553" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="554" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Nursing Facility — Subsequent</h3>
+                                <div data-id="555" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="556" class="w-full text-left text-xs"><thead data-id="557" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="558"><th data-id="559" class="px-3 py-2.5">CPT</th><th data-id="560" class="px-3 py-2.5">MDM</th></tr></thead>
+                                    <tbody data-id="561" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="562" class="hover:bg-slate-50"><td data-id="563" class="px-3 py-2 font-mono font-bold">99307</td><td data-id="564" class="px-3 py-2">Straightforward</td></tr>
+                                        <tr data-id="565" class="hover:bg-slate-50"><td data-id="566" class="px-3 py-2 font-mono font-bold">99308</td><td data-id="567" class="px-3 py-2">Low</td></tr>
+                                        <tr data-id="568" class="hover:bg-slate-50"><td data-id="569" class="px-3 py-2 font-mono font-bold">99309</td><td data-id="570" class="px-3 py-2">Moderate</td></tr>
+                                        <tr data-id="571" class="hover:bg-slate-50"><td data-id="572" class="px-3 py-2 font-mono font-bold">99310</td><td data-id="573" class="px-3 py-2">High</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="574">
+                                <h3 data-id="575" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="576" data-lucide="table-2" class="w-4 h-4 text-teal-600"></i> Preventive Medicine</h3>
+                                <div data-id="577" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="578" class="w-full text-left text-xs"><thead data-id="579" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="580"><th data-id="581" class="px-3 py-2.5">Age</th><th data-id="582" class="px-3 py-2.5">New (CPT)</th><th data-id="583" class="px-3 py-2.5">Established (CPT)</th></tr></thead>
+                                    <tbody data-id="584" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="585" class="hover:bg-slate-50"><td data-id="586" class="px-3 py-2">Infant (&lt;1)</td><td data-id="587" class="px-3 py-2 font-mono font-bold">99381</td><td data-id="588" class="px-3 py-2 font-mono font-bold">99391</td></tr>
+                                        <tr data-id="589" class="hover:bg-slate-50"><td data-id="590" class="px-3 py-2">1–4 years</td><td data-id="591" class="px-3 py-2 font-mono font-bold">99382</td><td data-id="592" class="px-3 py-2 font-mono font-bold">99392</td></tr>
+                                        <tr data-id="593" class="hover:bg-slate-50"><td data-id="594" class="px-3 py-2">5–11 years</td><td data-id="595" class="px-3 py-2 font-mono font-bold">99383</td><td data-id="596" class="px-3 py-2 font-mono font-bold">99393</td></tr>
+                                        <tr data-id="597" class="hover:bg-slate-50"><td data-id="598" class="px-3 py-2">12–17 years</td><td data-id="599" class="px-3 py-2 font-mono font-bold">99384</td><td data-id="600" class="px-3 py-2 font-mono font-bold">99394</td></tr>
+                                        <tr data-id="601" class="hover:bg-slate-50"><td data-id="602" class="px-3 py-2">18–39 years</td><td data-id="603" class="px-3 py-2 font-mono font-bold">99385</td><td data-id="604" class="px-3 py-2 font-mono font-bold">99395</td></tr>
+                                        <tr data-id="605" class="hover:bg-slate-50"><td data-id="606" class="px-3 py-2">40–64 years</td><td data-id="607" class="px-3 py-2 font-mono font-bold">99386</td><td data-id="608" class="px-3 py-2 font-mono font-bold">99396</td></tr>
+                                        <tr data-id="609" class="hover:bg-slate-50"><td data-id="610" class="px-3 py-2">65+ years</td><td data-id="611" class="px-3 py-2 font-mono font-bold">99387</td><td data-id="612" class="px-3 py-2 font-mono font-bold">99397</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="613">
+                                <h3 data-id="614" class="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><i data-id="615" data-lucide="tag" class="w-4 h-4 text-teal-600"></i> Common Modifiers</h3>
+                                <div data-id="616" class="overflow-x-auto rounded-2xl border border-slate-200">
+                                    <table data-id="617" class="w-full text-left text-xs"><thead data-id="618" class="bg-navy-900 text-white uppercase tracking-wide"><tr data-id="619"><th data-id="620" class="px-3 py-2.5">Modifier</th><th data-id="621" class="px-3 py-2.5">Description</th></tr></thead>
+                                    <tbody data-id="622" class="divide-y divide-slate-100 text-slate-700">
+                                        <tr data-id="623" class="hover:bg-slate-50"><td data-id="624" class="px-3 py-2 font-mono font-bold">-25</td><td data-id="625" class="px-3 py-2">Significant, separately identifiable E&M service on same day as procedure</td></tr>
+                                        <tr data-id="626" class="hover:bg-slate-50"><td data-id="627" class="px-3 py-2 font-mono font-bold">-95</td><td data-id="628" class="px-3 py-2">Synchronous telehealth service via real-time audio/video</td></tr>
+                                        <tr data-id="629" class="hover:bg-slate-50"><td data-id="630" class="px-3 py-2 font-mono font-bold">GT</td><td data-id="631" class="px-3 py-2">Via interactive audio/video telecommunications (legacy telehealth modifier)</td></tr>
+                                        <tr data-id="632" class="hover:bg-slate-50"><td data-id="633" class="px-3 py-2 font-mono font-bold">-AI</td><td data-id="634" class="px-3 py-2">Principal physician of record</td></tr>
+                                        <tr data-id="635" class="hover:bg-slate-50"><td data-id="636" class="px-3 py-2 font-mono font-bold">-57</td><td data-id="637" class="px-3 py-2">Decision for surgery (used with initial inpatient codes)</td></tr>
+                                    </tbody></table>
+                                </div>
+                            </div>
+                            <div data-id="638" class="bg-teal-50 rounded-2xl p-4 text-sm text-teal-800 flex items-start gap-3">
+                                <i data-id="639" data-lucide="clock" class="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5"></i>
+                                <div data-id="640">
+                                    <p data-id="641" class="font-semibold mb-1">Time-Based Coding</p>
+                                    <p data-id="642" class="text-teal-700">If total time on the date of encounter is documented, the visit may be coded by time regardless of MDM complexity. Time includes face-to-face and non-face-to-face activities (chart review, ordering, care coordination, counseling).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div data-id="643" id="empty-state" class="bg-white rounded-3xl shadow-sm p-10 flex flex-col items-center justify-center text-center min-h-[400px]">
+                <div data-id="644" class="bg-teal-50 rounded-full p-6 mb-5"><i data-id="645" data-lucide="scan-search" class="w-10 h-10 text-teal-500"></i></div>
+                <h3 data-id="646" class="text-lg font-semibold text-navy-900 mb-2">Ready to Analyze</h3>
+                <p data-id="647" class="text-sm text-slate-500 max-w-xs">Paste a clinic note on the left and click <strong data-id="648">"Analyze Note"</strong> to get CPT coding results and optimization suggestions.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer data-id="649" class="py-6 mt-auto text-center space-y-1">
+        <p data-id="650" class="text-xs text-slate-400">This tool is for educational and reference purposes. All coding decisions should be verified by a certified professional coder (CPC) or compliance officer.</p>
+        <p data-id="651" class="text-xs text-slate-400">Made by Copilot</p>
+    </footer>
+
+    <script>
+    // ===================== STATE =====================
+    let currentPatientType = 'established';
+    let analysisResult = null;
+
+    // ===================== INLINE STYLE HELPERS =====================
+    function setPatientBtnStyles() {
+      document.querySelectorAll('#patient-type-group .patient-btn').forEach(btn => {
+        const isActive = btn.dataset.value === currentPatientType;
+        btn.style.cssText = isActive
+          ? 'background:#0891b2 !important;color:#ffffff;border:2px solid #0891b2;box-shadow:0 2px 8px rgba(8,145,178,0.35);border-radius:999px;padding:10px 22px;font-weight:600;cursor:pointer;font-size:0.95rem;min-height:44px;flex:1;text-align:center;transition:all 0.2s;'
+          : 'background:#f8fafc;color:#475569;border:2px solid #cbd5e1;box-shadow:none;border-radius:999px;padding:10px 22px;font-weight:600;cursor:pointer;font-size:0.95rem;min-height:44px;flex:1;text-align:center;transition:all 0.2s;';
+      });
+    }
+
+    function setTabStyles(activeTab) {
+      document.querySelectorAll('.tab-btn-result').forEach(btn => {
+        const isActive = btn.dataset.tab === activeTab;
+        btn.style.borderBottom = isActive ? '3px solid #0891b2' : '3px solid transparent';
+        btn.style.color = isActive ? '#0891b2' : '#64748b';
+        btn.style.fontWeight = isActive ? '600' : '500';
+        btn.style.background = 'transparent';
+      });
+    }
+
+    // ===================== SAMPLE NOTES =====================
+    const SAMPLE_NOTES = {
+    'office-moderate': `Patient: John Smith, DOB: 03/15/1958, MRN: 123456
+Date of Service: 05/11/2026
+
+CC: Follow-up for hypertension and type 2 diabetes mellitus.
+
+HPI: Mr. Smith is a 68-year-old male presenting for follow-up of his hypertension and diabetes. He states his blood sugars have been running higher than usual over the past 2 weeks, ranging 180-250 fasting. He reports increased thirst and urination. He has been compliant with his metformin but admits to poor dietary choices recently. He denies any chest pain, shortness of breath, or visual changes. His blood pressure at home has been averaging 150/92. He reports occasional headaches in the morning. He denies dizziness or palpitations.
+
+ROS:
+Constitutional: Denies fever, weight loss
+Cardiovascular: Denies chest pain, palpitations
+Respiratory: Denies shortness of breath, cough
+Endocrine: Reports increased thirst and urination as above
+Neurological: Reports occasional morning headaches
+
+Exam:
+Vitals: BP 152/94, HR 78, Temp 98.6, RR 16, SpO2 98%, Weight 215 lbs, BMI 31.2
+General: Well-appearing, no acute distress
+HEENT: PERRL, oropharynx clear
+Cardiovascular: RRR, no murmurs, no edema
+Respiratory: Clear to auscultation bilaterally
+Extremities: No peripheral edema, pedal pulses intact
+
+Labs reviewed: HbA1c 8.9% (previously 7.4%), fasting glucose 198, BMP within normal limits, lipid panel shows LDL 142. Urine microalbumin/creatinine ratio slightly elevated.
+
+Assessment:
+1. Type 2 diabetes mellitus - poorly controlled, HbA1c worsened from 7.4% to 8.9%
+2. Essential hypertension - not at goal, BP elevated today and per home readings
+3. Hyperlipidemia - LDL above goal
+
+Plan:
+1. Diabetes: Increase metformin to 1000mg BID. Add glipizide 5mg daily. Discussed diet and exercise. Referral to diabetes educator. Recheck HbA1c in 3 months.
+2. Hypertension: Increase lisinopril from 10mg to 20mg daily. Continue home BP monitoring. If not at goal in 4 weeks, consider adding amlodipine.
+3. Hyperlipidemia: Start atorvastatin 20mg daily. Recheck lipids in 6 weeks.
+4. Follow-up in 4-6 weeks. Patient to call if blood sugars remain above 250 or if experiencing any side effects from new medications.`,
+
+    'office-high': `Patient: Mary Johnson, DOB: 11/22/1950, MRN: 789012
+Date of Service: 05/11/2026
+
+CC: Worsening shortness of breath and lower extremity edema for 5 days.
+
+HPI: Mrs. Johnson is a 75-year-old female with known history of CHF (EF 30%), CAD s/p CABG (2019), atrial fibrillation on warfarin, CKD stage 3, and type 2 diabetes presenting with progressive dyspnea and bilateral leg swelling over the past 5 days. She reports orthopnea requiring 3 pillows to sleep (baseline 1 pillow). She endorses PND occurring 2x nightly. She reports a 6-pound weight gain over the past week. She has been compliant with her medications including furosemide 40mg daily, carvedilol 25mg BID, lisinopril 20mg, warfarin per INR, and insulin glargine 30 units nightly. She denies chest pain, syncope, or hemoptysis. She reports decreased urine output. She notes increased fatigue and difficulty performing ADLs. She reports food insecurity leading to high-sodium diet choices.
+
+ROS:
+Constitutional: Reports fatigue, weight gain (6 lbs)
+Cardiovascular: Reports dyspnea, orthopnea, PND, edema; denies chest pain, syncope
+Respiratory: Reports shortness of breath at rest and exertion; denies cough, hemoptysis
+Gastrointestinal: Reports decreased appetite; denies nausea/vomiting
+Genitourinary: Reports decreased urine output
+Musculoskeletal: Reports difficulty ambulating due to edema
+Psychiatric: Reports anxiety regarding worsening symptoms
+Neurological: Denies headache, dizziness, focal weakness
+
+Exam:
+Vitals: BP 98/62, HR 92 irregular, Temp 98.4, RR 22, SpO2 91% on RA, Weight 178 lbs (baseline 172)
+General: Appears chronically ill, mild respiratory distress at rest
+HEENT: JVP elevated to 12cm
+Cardiovascular: Irregularly irregular rhythm, S3 gallop present, 2/6 systolic murmur at apex
+Respiratory: Bilateral basilar crackles to mid-lung fields, decreased breath sounds at bases
+Abdomen: Hepatomegaly, positive hepatojugular reflux
+Extremities: 3+ bilateral pitting edema to knees, cool to touch
+
+Labs reviewed: BNP 1450 (elevated), BMP shows Cr 2.1 (baseline 1.5), K 5.2, Na 131. CBC unremarkable. PT/INR 2.8 (therapeutic). I personally reviewed and interpreted the chest X-ray showing bilateral pleural effusions and cardiomegaly. EKG reviewed showing afib with RVR at 92bpm, no acute ST changes compared to prior.
+
+Discussed case with Dr. Anderson (cardiology) by phone regarding inpatient vs outpatient management given severity of decompensation.
+
+Assessment:
+1. Acute on chronic systolic heart failure decompensation (HFrEF, EF 30%) — NYHA Class III-IV, severe exacerbation
+2. CKD stage 3 — worsening, Cr elevated from baseline, likely cardiorenal syndrome
+3. Atrial fibrillation — rate adequately controlled on current regimen, INR therapeutic
+4. Type 2 diabetes mellitus — continue current insulin regimen
+5. Social determinants: food insecurity contributing to high-sodium diet and decompensation
+
+Plan:
+1. CHF: Admit to hospital for IV diuresis with furosemide 80mg IV BID. Daily weights, strict I&O, 1.5L fluid restriction, 2g sodium diet. Consider dobutamine if no response. Cardiology consult for possible device evaluation. Hold lisinopril given hypotension and hyperkalemia.
+2. CKD: Monitor Cr and K closely with diuresis. Renal diet. If worsening, nephrology consult.
+3. AFib: Continue warfarin, recheck INR in 2 days. Continue carvedilol.
+4. Diabetes: Continue insulin glargine. Sliding scale insulin while inpatient. Monitor glucose QID.
+5. Social work referral for food insecurity. Dietary counseling ordered.`,
+
+    'ed': `Patient: Robert Davis, DOB: 07/08/1985, MRN: 345678
+Date of Service: 05/11/2026
+
+CC: Acute onset chest pain and shortness of breath.
+
+HPI: Mr. Davis is a 40-year-old male presenting to the ED via EMS with acute onset substernal chest pain that began approximately 2 hours prior to arrival. The pain is described as pressure-like, rated 8/10 severity, radiating to the left arm and jaw. The pain began while at rest watching television. He reports associated diaphoresis, nausea, and shortness of breath. He took 2 aspirin 325mg en route. He has a history of hyperlipidemia (untreated) and 20 pack-year smoking history. Family history significant for father with MI at age 48. He denies prior cardiac history, cocaine use, or recent trauma. He denies fever, cough, leg swelling, or recent immobilization.
+
+ROS:
+Constitutional: Diaphoresis, reports feeling lightheaded
+Cardiovascular: Chest pain as above, denies palpitations
+Respiratory: SOB, denies cough, pleuritic component
+Gastrointestinal: Nausea, no vomiting
+Musculoskeletal: Denies musculoskeletal pain
+Neurological: Reports lightheadedness, denies syncope, focal deficits
+Psychiatric: Reports significant anxiety
+
+Exam:
+Vitals: BP 162/98, HR 104, Temp 98.8, RR 20, SpO2 96% on 2L NC, Pain 8/10
+General: Anxious, diaphoretic, moderate distress
+HEENT: Mucous membranes moist
+Cardiovascular: Tachycardic, regular rhythm, no murmurs, no JVD
+Respiratory: Tachypneic, clear bilaterally, no wheezes/crackles
+Abdomen: Soft, non-tender
+Extremities: No edema, pulses 2+ throughout
+Skin: Cool, diaphoretic
+
+I independently reviewed and interpreted the EKG which shows ST elevation in leads II, III, aVF with reciprocal changes in I, aVL consistent with acute inferior STEMI. Compared to no prior EKG available.
+
+Troponin T stat: 0.85 ng/mL (elevated, ref <0.01). CBC, BMP reviewed - unremarkable. Chest X-ray reviewed showing no acute pulmonary process, normal cardiac silhouette.
+
+Spoke with Dr. Chen (interventional cardiology) — activating cath lab for emergent PCI.
+
+Assessment:
+1. Acute inferior ST-elevation myocardial infarction (STEMI)
+2. Acute chest pain — etiology STEMI as above
+3. Hypertension — likely stress response, will treat with cardiac medications
+4. Hyperlipidemia — untreated, contributing risk factor
+
+Plan:
+1. STEMI Protocol: Aspirin 325mg (given by EMS). Heparin bolus 60 units/kg IV, drip at 12 units/kg/hr. Ticagrelor 180mg PO loading dose. Emergent cardiac catheterization for PCI — door-to-balloon goal <90 minutes.
+2. Continuous telemetry monitoring. Serial troponins Q6h.
+3. Morphine 4mg IV PRN chest pain. Nitroglycerin SL x3 doses given in ED with partial relief.
+4. NPO for cath lab. IV NS at 125 cc/hr.
+5. ICU admission post-cath. Start atorvastatin 80mg, metoprolol 25mg BID post-procedure when hemodynamically stable.
+6. Social work for smoking cessation counseling. Cardiology follow-up in 1 week post-discharge.`,
+
+    'nf': `Patient: Eleanor Williams, DOB: 02/14/1938, MRN: 567890
+Date of Service: 05/11/2026
+
+CC: Initial nursing facility admission for post-hip fracture rehabilitation.
+
+HPI: Mrs. Williams is an 88-year-old female admitted to the nursing facility today following a 5-day hospitalization for a left intertrochanteric hip fracture sustained from a mechanical fall at home. She underwent ORIF on hospital day 2. She reports her pain is currently 4/10 on the left hip, managed with acetaminophen 1000mg TID and oxycodone 5mg Q6h PRN. She has been weight-bearing as tolerated per orthopedics. She reports some confusion that resolved since discharge. She has a history of moderate Alzheimer dementia (MMSE 18/30), osteoporosis, hypertension, hypothyroidism, and GERD. She lives alone — her daughter expresses concern about her ability to return home safely. She has been on a fall prevention program. She uses a walker at baseline.
+
+ROS:
+Constitutional: Denies fever, reports mild fatigue
+Cardiovascular: Denies chest pain, edema
+Respiratory: Denies dyspnea, cough
+Gastrointestinal: Reports constipation since surgery, decreased appetite. Denies nausea.
+Musculoskeletal: Left hip pain as above, difficulty with transfers
+Neurological: Baseline cognitive impairment per dementia diagnosis, no new focal deficits
+Psychiatric: Reports mild anxiety about rehabilitation
+
+Exam:
+Vitals: BP 138/78, HR 72, Temp 98.2, RR 16, SpO2 97%, Weight 135 lbs
+General: Frail elderly female, NAD, pleasant and cooperative
+HEENT: Normocephalic, oropharynx moist
+Cardiovascular: RRR, no murmurs, no edema
+Respiratory: CTA bilaterally
+Abdomen: Soft, mildly distended, decreased bowel sounds
+Musculoskeletal: Left hip surgical incision clean/dry/intact, staples in place. Moderate tenderness. ROM limited by pain. WBAT per ortho. Right hip normal.
+Neurological: A&Ox2 (person, place), MMSE 18/30, follows 2-step commands
+Skin: No pressure injuries. Braden score 15 (mild risk).
+
+Labs from hospital discharge reviewed: CBC shows Hgb 10.2 (post-surgical anemia), BMP normal, TSH 3.2 (normal on levothyroxine), calcium/vitamin D levels pending.
+
+Assessment:
+1. Status post left intertrochanteric hip fracture with ORIF — rehab phase
+2. Alzheimer dementia, moderate — baseline cognitive impairment, monitor for delirium
+3. Osteoporosis — on calcium/vitamin D, consider bisphosphonate after fracture healing
+4. Hypertension — controlled on current regimen
+5. Hypothyroidism — stable on levothyroxine
+6. Constipation — post-operative, likely opioid-related
+7. Fall risk — multifactorial (dementia, post-surgical, osteoporosis)
+
+Plan:
+1. PT/OT evaluation and treatment plan — goal functional independence for safe discharge. Daily therapy sessions.
+2. Pain: Continue acetaminophen 1000mg TID. Wean oxycodone as tolerated. Monitor for oversedation given dementia.
+3. Dementia: Continue donepezil 10mg. Delirium precautions. Reorientation. Minimize PRN narcotics. Family meeting with daughter to discuss discharge planning.
+4. Continue home medications: amlodipine 5mg, levothyroxine 75mcg, omeprazole 20mg, calcium 600mg/vitamin D 1000 IU BID.
+5. Constipation: Start docusate 100mg BID, senna 1 tab QHS. Encourage fluids.
+6. DVT prophylaxis: Enoxaparin 40mg SQ daily for 14 days post-op.
+7. Wound care: Staple removal in 10 days. Monitor incision daily.
+8. Social work consult for discharge planning and home safety evaluation.
+9. Follow-up with orthopedics in 2 weeks. Reassess in 7 days or sooner if change in status.`,
+
+    'telehealth': `Patient: Sarah Chen, DOB: 09/20/1990, MRN: 112233
+Date of Service: 05/11/2026
+Visit Type: Telehealth via HIPAA-compliant video platform
+
+CC: Follow-up for anxiety disorder and insomnia.
+
+HPI: Ms. Chen is a 35-year-old female presenting via telehealth for follow-up of her generalized anxiety disorder and chronic insomnia. She was started on sertraline 50mg daily 6 weeks ago. She reports some improvement in her anxiety symptoms — she feels less "on edge" and her worry episodes have decreased from daily to 2-3 times per week. However, she reports persistent difficulty falling asleep (sleep onset latency ~60 minutes) and early morning awakening. She has been practicing sleep hygiene measures as previously discussed (limiting screen time, consistent bedtime) with minimal improvement. She denies suicidal ideation, homicidal ideation, or self-harm. She reports stable mood otherwise. She has been attending therapy sessions biweekly with her psychologist. She works as a software engineer and notes that work stress has been a significant trigger. She reports adequate social support. She denies medication side effects except mild initial nausea that resolved after the first week.
+
+ROS:
+Constitutional: Denies weight changes, fever
+Cardiovascular: Denies palpitations (previously reported — resolved with sertraline)
+Gastrointestinal: Denies current nausea, appetite normal
+Neurological: Denies headaches, dizziness
+Psychiatric: Anxiety improved but present, insomnia persistent, denies depression, denies SI/HI
+
+Exam (via video assessment):
+General: Well-appearing, well-groomed, seated comfortably at home
+Mood/Affect: Mood "better but still anxious sometimes," affect congruent, full range
+Speech: Normal rate, rhythm, and volume
+Thought process: Linear, logical, goal-directed
+Thought content: No SI/HI, no delusions, no obsessions reported
+Cognition: Alert, oriented, appropriate, engaged in conversation
+Behavior: Good eye contact with camera, no psychomotor agitation or retardation
+
+PHQ-9 score: 4 (minimal depression). GAD-7 score: 10 (moderate anxiety, improved from 16 at last visit).
+
+Assessment:
+1. Generalized anxiety disorder — partially improved on sertraline 50mg, GAD-7 improved from 16 to 10
+2. Chronic insomnia — persistent despite sleep hygiene, affecting function
+
+Plan:
+1. Anxiety: Increase sertraline to 100mg daily given partial response. Continue therapy. Recheck GAD-7 at next visit. Discussed expected timeline for full effect (4-6 weeks at new dose).
+2. Insomnia: Start melatonin 3mg 30 minutes before bedtime. If no improvement in 2 weeks, consider trazodone 25-50mg QHS. Reviewed CBT-I principles. Provided sleep diary template.
+3. Safety: Reviewed crisis resources. Patient denies any safety concerns.
+4. Follow-up via telehealth in 4 weeks. Patient to call or message if side effects or worsening symptoms.`,
+
+    'consult-outpatient': `Patient: James Mitchell, DOB: 04/12/1962, MRN: 445566
+Date of Service: 05/11/2026
+
+CONSULTATION NOTE
+
+Requesting Provider: Dr. Linda Torres, Internal Medicine
+Reason for Consultation: Evaluation of recurrent chest pain and exertional dyspnea. Patient referred by Dr. Torres for cardiology assessment.
+
+This consultation was requested by Dr. Torres for evaluation of this patient's chest pain symptoms.
+
+CC: Recurrent chest pain and shortness of breath on exertion for 3 weeks.
+
+HPI: Mr. Mitchell is a 64-year-old male referred by Dr. Torres for cardiology evaluation of recurrent chest pain. He describes episodes of substernal pressure occurring 2-3 times weekly over the past 3 weeks, typically with moderate exertion such as climbing stairs or brisk walking. The discomfort is rated 5-6/10, lasting 5-10 minutes, and resolves with rest. He reports associated dyspnea on exertion with a decrease in his exercise tolerance from 4 blocks to 1 block. He denies chest pain at rest, orthopnea, PND, or syncope. He has a history of hypertension (on amlodipine 10mg), hyperlipidemia (on atorvastatin 40mg), type 2 diabetes (on metformin 1000mg BID, HbA1c 7.8%), and 30-pack-year smoking history (quit 5 years ago). Family history significant for father with MI at age 58 and brother with CABG at age 62.
+
+ROS:
+Constitutional: Denies fever, weight loss, fatigue
+Cardiovascular: Chest pain and dyspnea as above; denies palpitations, edema, syncope
+Respiratory: Exertional dyspnea; denies cough, wheezing, hemoptysis
+Gastrointestinal: Denies reflux, nausea, abdominal pain
+Musculoskeletal: Denies musculoskeletal chest wall pain
+Neurological: Denies dizziness, lightheadedness
+Psychiatric: Reports mild anxiety about symptoms
+
+Exam:
+Vitals: BP 142/88, HR 74, Temp 98.4, RR 16, SpO2 98% on RA, Weight 198 lbs, BMI 28.4
+General: Well-appearing, pleasant, no acute distress
+HEENT: No JVD, no carotid bruits
+Cardiovascular: Regular rate and rhythm, S1/S2 normal, no S3/S4, no murmurs, PMI non-displaced. Peripheral pulses 2+ and symmetric.
+Respiratory: Clear to auscultation bilaterally, no wheezes or crackles
+Abdomen: Soft, non-tender, no hepatomegaly
+Extremities: No edema, no cyanosis, no clubbing
+
+I independently reviewed and interpreted the EKG performed today: Normal sinus rhythm at 74 bpm, normal axis, no ST-T wave changes, no Q waves, no LVH. PR interval normal.
+
+I independently reviewed and interpreted the echocardiogram performed today: LVEF 55%, no wall motion abnormalities, mild concentric LVH, normal valvular function, no pericardial effusion, E/A ratio 0.9 suggesting grade I diastolic dysfunction.
+
+Reviewed outside labs from Dr. Torres' office: HbA1c 7.8%, lipid panel LDL 118, HDL 42, TG 165. BMP normal. Troponin negative x1 from urgent care visit last week.
+
+Assessment:
+1. Chest pain — exertional angina, high clinical suspicion for coronary artery disease given multiple risk factors (DM, HTN, hyperlipidemia, smoking history, strong family history), Framingham risk score high
+2. Exertional dyspnea — likely cardiac etiology given above, echo shows preserved EF with mild diastolic dysfunction
+3. Hypertension — not optimally controlled, BP 142/88 today
+4. Type 2 diabetes mellitus — suboptimally controlled, HbA1c 7.8%
+5. Hyperlipidemia — LDL not at goal for high-risk patient
+
+Recommendations:
+1. Exercise nuclear stress test to evaluate for inducible ischemia — scheduling within the next 5 days. If positive, will proceed with cardiac catheterization.
+2. Start aspirin 81mg daily for primary prevention given high cardiovascular risk.
+3. Increase atorvastatin to 80mg daily — target LDL <70 given high risk.
+4. Add metoprolol succinate 25mg daily for exertional symptoms and rate/BP control.
+5. Prescribe sublingual nitroglycerin 0.4mg PRN chest pain — instructed patient on proper use and when to call 911.
+6. Lifestyle counseling: cardiac diet, continue tobacco cessation, regular moderate exercise as tolerated (avoid vigorous exertion until stress test completed).
+7. Follow-up in my office in 1 week to review stress test results.
+8. Patient instructed to go to nearest ED if experiencing chest pain at rest, lasting >15 minutes, or associated with syncope/severe dyspnea.
+
+I will contact Dr. Torres with my findings and recommendations. A copy of this consultation report is being sent to Dr. Torres' office.`,
+
+    'consult-inpatient': `Patient: Patricia Henderson, DOB: 08/30/1955, MRN: 778899
+Date of Service: 05/11/2026
+
+CONSULTATION NOTE
+
+Requesting Provider: Dr. Michael Reeves, Hospitalist — Medicine Service
+Reason for Consultation: Nephrology consultation requested by Dr. Reeves for evaluation of acute kidney injury with rising creatinine and oliguria in a hospitalized patient.
+
+This consultation was requested by Dr. Reeves for evaluation and management recommendations regarding acute kidney injury.
+
+CC: Acute kidney injury — rising creatinine and decreased urine output.
+
+HPI: Mrs. Henderson is a 70-year-old female admitted to the hospital 2 days ago by Dr. Reeves for community-acquired pneumonia requiring IV antibiotics. She was initially started on IV ceftriaxone and azithromycin. Her admission creatinine was 1.1 (baseline 0.9 per outpatient records from 3 months ago). Over the past 24 hours, her creatinine has risen from 1.1 to 2.8, and urine output has decreased to approximately 200 mL over the past 12 hours (oliguria). She received IV contrast for a CT chest on hospital day 1 to evaluate for possible pulmonary embolism (which was ruled out). She has been receiving IV vancomycin for the past 48 hours after blood cultures showed gram-positive cocci in clusters (pending speciation). Her vancomycin trough level drawn this morning was 28 mcg/mL (supratherapeutic, goal 15-20). She has a history of hypertension (on lisinopril 20mg and HCTZ 25mg), osteoarthritis (takes ibuprofen 600mg TID daily for the past 2 years), type 2 diabetes (on metformin 500mg BID), and GERD (on omeprazole 20mg). She denies gross hematuria, flank pain, or urinary symptoms prior to this hospitalization. She reports mild nausea and decreased appetite since admission.
+
+ROS:
+Constitutional: Reports fatigue, decreased appetite, mild nausea
+Cardiovascular: Denies chest pain, edema, palpitations
+Respiratory: Productive cough improving on antibiotics, mild dyspnea
+Gastrointestinal: Nausea, decreased appetite, denies vomiting, diarrhea
+Genitourinary: Decreased urine output as above, Foley catheter in place, denies dysuria or hematuria
+Musculoskeletal: Chronic joint pain (baseline)
+Neurological: Denies confusion, headache
+
+Exam:
+Vitals: BP 108/64, HR 88, Temp 99.1, RR 18, SpO2 95% on 2L NC, Weight 72 kg
+General: Elderly female appearing tired but alert, mildly ill-appearing
+HEENT: Mucous membranes dry, no JVD
+Cardiovascular: RRR, no murmurs, no S3
+Respiratory: Right lower lobe crackles, improved from admission
+Abdomen: Soft, non-tender, no CVA tenderness bilaterally
+Extremities: Trace bilateral ankle edema (new), skin turgor slightly decreased
+Genitourinary: Foley catheter in place, urine output 200 mL over 12 hours, urine appears concentrated/dark
+
+I personally reviewed and interpreted the following labs:
+- BMP today: Cr 2.8 (up from 1.1 on admission), BUN 48, K 5.4, Na 134, Bicarb 18, Glucose 142
+- BMP yesterday: Cr 1.8, K 4.9
+- CBC: WBC 12.4 (down from 18.2 on admission), Hgb 10.8, Plt 198
+- Urinalysis: Specific gravity 1.030, protein 1+, blood trace, granular casts present, WBC 5-10, no bacteria
+- Urine sodium: 12 mEq/L (suggesting prerenal component)
+- Urine eosinophils: Pending
+- Vancomycin trough: 28 mcg/mL (supratherapeutic)
+- Blood cultures: Gram-positive cocci in clusters — pending speciation
+- Admission Cr (3 months prior per PCP records): 0.9
+
+I reviewed the CT chest from hospital day 1 — no PE, bilateral lower lobe consolidation consistent with pneumonia, no hydronephrosis on limited views.
+
+I reviewed the renal ultrasound ordered today: Normal-sized kidneys bilaterally, no hydronephrosis, no stones, normal echogenicity, normal cortical thickness.
+
+I discussed this case with Dr. Reeves regarding the likely multifactorial etiology and urgent medication adjustments needed.
+
+Assessment:
+1. Acute kidney injury, KDIGO Stage 2 — multifactorial etiology:
+   a. Nephrotoxic medications: Supratherapeutic vancomycin (trough 28), chronic NSAID use (ibuprofen), IV contrast exposure on HD1
+   b. Prerenal component: Low urine sodium (12), dry mucous membranes, relative hypotension (BP 108/64), likely volume depletion from decreased oral intake and fever
+   c. Possible acute interstitial nephritis (AIN): Given multiple nephrotoxic drugs and urine eosinophils pending
+   d. Granular casts on UA suggest acute tubular necrosis (ATN) component
+2. Community-acquired pneumonia — improving on current antibiotic regimen
+3. Hyperkalemia (K 5.4) — likely related to AKI and ACE inhibitor use
+4. Metabolic acidosis (bicarb 18) — secondary to AKI
+5. Type 2 diabetes — hold metformin given AKI (risk of lactic acidosis)
+6. Hypertension — currently hypotensive; hold lisinopril and HCTZ
+
+Recommendations:
+1. STOP nephrotoxic agents immediately:
+   - Discontinue vancomycin — switch to daptomycin 6mg/kg IV daily pending culture speciation (pharmacy to dose adjust for current renal function)
+   - Discontinue ibuprofen permanently — switch to acetaminophen 1000mg TID for pain
+   - No further IV contrast until renal function recovers
+2. HOLD potentially harmful medications:
+   - Hold lisinopril (ACE inhibitor — contributing to hyperkalemia and hypotension in setting of AKI)
+   - Hold HCTZ (volume depletion concern)
+   - Hold metformin (risk of lactic acidosis with Cr >1.5)
+3. Volume resuscitation: IV normal saline 250 mL/hr x 4 hours, then reassess volume status and urine output. Goal UOP >0.5 mL/kg/hr.
+4. Hyperkalemia management: Kayexalate 30g PO x1 now. Recheck K in 4 hours. Continuous telemetry monitoring. If K >6.0 or EKG changes, IV calcium gluconate and insulin/dextrose protocol.
+5. Strict I&O monitoring. Foley catheter to remain. Daily weights.
+6. Recheck BMP, vancomycin level in AM. Trend Cr Q12h.
+7. If creatinine continues to rise despite above interventions, or if urine eosinophils return positive suggesting AIN, may consider renal biopsy and/or empiric corticosteroids.
+8. If oliguric renal failure progresses despite fluid resuscitation and medication adjustments, will discuss temporary hemodialysis.
+9. Follow-up: I will round on this patient daily while inpatient. Will reassess renal function and adjust plan accordingly.
+
+I will communicate my findings and recommendations to Dr. Reeves. A copy of this consultation report is being sent to the requesting physician.`
+    };
+
+    // ===================== PERSISTENCE =====================
+    function saveState() {
+        try {
+            if (window.AppSDK) {
+                const state = { patientType: currentPatientType, visitType: document.getElementById('visit-type').value, note: document.getElementById('clinical-note').value, age: document.getElementById('patient-age').value };
+                window.AppSDK.upsert('cpt_coder', 'state', state);
+            }
+        } catch(e) {}
+    }
+    async function loadState() {
+        try {
+            if (window.AppSDK) {
+                const doc = await window.AppSDK.get('cpt_coder', 'state');
+                if (doc && doc.data) {
+                    const state = doc.data;
+                    if (state.patientType) {
+                        currentPatientType = state.patientType;
+                        setPatientBtnStyles();
+                        updateCPTHint();
+                    }
+                    if (state.visitType) document.getElementById('visit-type').value = state.visitType;
+                    if (state.note) document.getElementById('clinical-note').value = state.note;
+                    if (state.age) document.getElementById('patient-age').value = state.age;
+                    handleVisitTypeChange();
+                }
+            }
+        } catch(e) {}
+    }
+
+    // ===================== COMPREHENSIVE DATA MAPS =====================
+    const LEVEL_NAMES = ['Minimal','Low','Moderate','High'];
+    const LEVEL_NUMS = { 'Minimal': 2, 'Low': 3, 'Moderate': 4, 'High': 5 };
+    const LEVEL_CSS = { 'Minimal': 'score-cell-minimal', 'Low': 'score-cell-low', 'Moderate': 'score-cell-moderate', 'High': 'score-cell-high' };
+
+    const CPT_DESCRIPTIONS = {
+        '99202':'New Patient Office Visit — Straightforward MDM (15–29 min)',
+        '99203':'New Patient Office Visit — Low MDM (30–44 min)',
+        '99204':'New Patient Office Visit — Moderate MDM (45–59 min)',
+        '99205':'New Patient Office Visit — High MDM (60–74 min)',
+        '99211':'Established Patient — May not require physician presence',
+        '99212':'Established Patient Office Visit — Straightforward MDM (10–19 min)',
+        '99213':'Established Patient Office Visit — Low MDM (20–29 min)',
+        '99214':'Established Patient Office Visit — Moderate MDM (30–39 min)',
+        '99215':'Established Patient Office Visit — High MDM (40–54 min)',
+        '99221':'Initial Inpatient/Observation — Low/Straightforward MDM (40 min)',
+        '99222':'Initial Inpatient/Observation — Moderate MDM (55 min)',
+        '99223':'Initial Inpatient/Observation — High MDM (75 min)',
+        '99231':'Subsequent Inpatient/Observation — Low/Straightforward MDM (25 min)',
+        '99232':'Subsequent Inpatient/Observation — Moderate MDM (35 min)',
+        '99233':'Subsequent Inpatient/Observation — High MDM (50 min)',
+        '99281':'ED Visit — Minimal Complexity',
+        '99282':'ED Visit — Low Complexity',
+        '99283':'ED Visit — Moderate Complexity',
+        '99284':'ED Visit — Moderate-High Complexity',
+        '99285':'ED Visit — High Complexity',
+        '99304':'Nursing Facility Initial — Low/Straightforward MDM (25 min)',
+        '99305':'Nursing Facility Initial — Moderate MDM (35 min)',
+        '99306':'Nursing Facility Initial — High MDM (50 min)',
+        '99307':'Nursing Facility Subsequent — Straightforward MDM',
+        '99308':'Nursing Facility Subsequent — Low MDM',
+        '99309':'Nursing Facility Subsequent — Moderate MDM',
+        '99310':'Nursing Facility Subsequent — High MDM',
+        '99381':'Preventive New — Infant (<1 yr)',
+        '99382':'Preventive New — 1–4 yrs',
+        '99383':'Preventive New — 5–11 yrs',
+        '99384':'Preventive New — 12–17 yrs',
+        '99385':'Preventive New — 18–39 yrs',
+        '99386':'Preventive New — 40–64 yrs',
+        '99387':'Preventive New — 65+ yrs',
+        '99391':'Preventive Est — Infant (<1 yr)',
+        '99392':'Preventive Est — 1–4 yrs',
+        '99393':'Preventive Est — 5–11 yrs',
+        '99394':'Preventive Est — 12–17 yrs',
+        '99395':'Preventive Est — 18–39 yrs',
+        '99396':'Preventive Est — 40–64 yrs',
+        '99397':'Preventive Est — 65+ yrs',
+        '99241':'Outpatient Consult — Straightforward Complexity (15 min)',
+        '99242':'Outpatient Consult — Straightforward Complexity (30 min)',
+        '99243':'Outpatient Consult — Low Complexity (40 min)',
+        '99244':'Outpatient Consult — Moderate Complexity (60 min)',
+        '99245':'Outpatient Consult — High Complexity (80 min)',
+        '99251':'Inpatient Consult — Straightforward Complexity (20 min)',
+        '99252':'Inpatient Consult — Straightforward Complexity (40 min)',
+        '99253':'Inpatient Consult — Low Complexity (55 min)',
+        '99254':'Inpatient Consult — Moderate Complexity (80 min)',
+        '99255':'Inpatient Consult — High Complexity (110 min)',
+    };
+
+    const RVU_MAP = {
+        '99202':0.93,'99203':1.60,'99204':2.60,'99205':3.50,
+        '99211':0.18,'99212':0.70,'99213':1.30,'99214':1.92,'99215':2.80,
+        '99221':1.92,'99222':2.61,'99223':3.86,
+        '99231':0.76,'99232':1.39,'99233':2.00,
+        '99281':0.45,'99282':0.79,'99283':1.35,'99284':2.56,'99285':3.80,
+        '99304':1.37,'99305':1.83,'99306':2.75,
+        '99307':0.76,'99308':1.09,'99309':1.63,'99310':2.49,
+        '99381':1.92,'99382':2.00,'99383':2.10,'99384':2.33,'99385':2.43,'99386':2.58,'99387':2.69,
+        '99391':1.37,'99392':1.50,'99393':1.60,'99394':1.75,'99395':1.92,'99396':2.00,'99397':2.10,
+        '99241':0.97,'99242':1.60,'99243':2.27,'99244':3.17,'99245':4.20,
+        '99251':0.99,'99252':1.56,'99253':2.27,'99254':3.17,'99255':4.20,
+    };
+
+    // ===================== MEDICATION DATABASE =====================
+    const MEDICATIONS_DB = {
+        high_risk: ['warfarin','coumadin','insulin','glargine','lispro','aspart','novolog','humalog','lantus','heparin','enoxaparin','lovenox','digoxin','lithium','methotrexate','chemotherapy','immunosuppressant','tacrolimus','cyclosporine','oxycodone','hydrocodone','morphine','fentanyl','opioid','controlled substance','suboxone','buprenorphine','vancomycin','daptomycin'],
+        common: ['metformin','glipizide','glyburide','pioglitazone','sitagliptin','empagliflozin','liraglutide','semaglutide','ozempic','lisinopril','enalapril','ramipril','losartan','valsartan','olmesartan','amlodipine','nifedipine','metoprolol','carvedilol','atenolol','propranolol','diltiazem','verapamil','hydrochlorothiazide','hctz','furosemide','lasix','spironolactone','atorvastatin','rosuvastatin','simvastatin','pravastatin','aspirin','clopidogrel','plavix','ticagrelor','apixaban','eliquis','rivaroxaban','xarelto','sertraline','fluoxetine','escitalopram','citalopram','paroxetine','venlafaxine','duloxetine','bupropion','trazodone','mirtazapine','amitriptyline','gabapentin','pregabalin','lamotrigine','levetiracetam','topiramate','donepezil','memantine','levothyroxine','synthroid','omeprazole','pantoprazole','esomeprazole','famotidine','albuterol','fluticasone','montelukast','prednisone','prednisolone','dexamethasone','acetaminophen','ibuprofen','naproxen','meloxicam','celecoxib','docusate','senna','melatonin','calcium','vitamin d','colchicine','allopurinol','nitroglycerin','ceftriaxone','azithromycin','kayexalate'],
+    };
+
+    const MED_ACTION_PATTERNS = {
+        new_start: [/\b(start|begin|initiate|prescribe|add)\s+(\w+)/gi, /\bnew\s+(medication|prescription|rx)\b/gi],
+        dose_change: [/\b(increase|decrease|adjust|titrate|change|uptitrate|downtitrate|reduce)\s+(\w+)/gi, /\bdose\s+(adjustment|change|increase|decrease)\b/gi],
+        refill: [/\b(continue|refill|renew|maintain)\s+(\w+)/gi],
+        discontinue: [/\b(stop|discontinue|d\/c|hold)\s+(\w+)/gi],
+    };
+
+    // ===================== DIAGNOSIS DATABASE =====================
+    const DIAGNOSIS_DB = [
+        { pattern: /\b(type\s*2|t2d|t2dm|type\s*ii)\s*(diabetes|dm)\b|\bdiabetes\s*(mellitus)?\s*(type\s*2|type\s*ii)?\b|\bT2DM\b/i, name: 'Type 2 Diabetes Mellitus', chronic: true },
+        { pattern: /\b(type\s*1|t1d|t1dm|type\s*i)\s*(diabetes|dm)\b|\bdiabetes\s*(mellitus)?\s*type\s*1\b/i, name: 'Type 1 Diabetes Mellitus', chronic: true },
+        { pattern: /\b(hypertension|htn|high blood pressure|essential hypertension)\b/i, name: 'Hypertension', chronic: true },
+        { pattern: /\b(coronary artery disease|cad|coronary disease)\b/i, name: 'Coronary Artery Disease', chronic: true },
+        { pattern: /\b(congestive heart failure|chf|heart failure|hfref|hfpef|systolic heart failure|diastolic heart failure)\b/i, name: 'Heart Failure', chronic: true },
+        { pattern: /\b(copd|chronic obstructive pulmonary|emphysema|chronic bronchitis)\b/i, name: 'COPD', chronic: true },
+        { pattern: /\b(ckd|chronic kidney disease|renal insufficiency|renal failure|kidney disease)\b/i, name: 'Chronic Kidney Disease', chronic: true },
+        { pattern: /\b(atrial fibrillation|afib|a-fib|a\.fib|af)\b/i, name: 'Atrial Fibrillation', chronic: true },
+        { pattern: /\b(cancer|carcinoma|malignancy|tumor|neoplasm|lymphoma|leukemia|melanoma|oncol)\b/i, name: 'Cancer/Malignancy', chronic: true },
+        { pattern: /\b(depression|major depressive|mdd)\b/i, name: 'Depression', chronic: true },
+        { pattern: /\b(anxiety|generalized anxiety|gad|panic disorder)\b/i, name: 'Anxiety Disorder', chronic: true },
+        { pattern: /\b(hypothyroid|hypothyroidism|low thyroid)\b/i, name: 'Hypothyroidism', chronic: true },
+        { pattern: /\b(hyperlipidemia|dyslipidemia|high cholesterol|hypercholesterolemia)\b/i, name: 'Hyperlipidemia', chronic: true },
+        { pattern: /\b(obesity|obese|bmi\s*(>|over|above)\s*30|morbid obesity)\b/i, name: 'Obesity', chronic: true },
+        { pattern: /\b(gerd|gastroesophageal reflux|acid reflux|reflux disease)\b/i, name: 'GERD', chronic: true },
+        { pattern: /\b(osa|obstructive sleep apnea|sleep apnea)\b/i, name: 'Obstructive Sleep Apnea', chronic: true },
+        { pattern: /\b(pad|peripheral arterial|peripheral vascular|pvd)\b/i, name: 'Peripheral Arterial Disease', chronic: true },
+        { pattern: /\b(stroke|cva|cerebrovascular accident|tia|transient ischemic)\b/i, name: 'Stroke/TIA', chronic: true },
+        { pattern: /\b(dementia|alzheimer|cognitive impairment|cognitive decline)\b/i, name: 'Dementia', chronic: true },
+        { pattern: /\b(osteoporosis|osteopenia|bone loss)\b/i, name: 'Osteoporosis', chronic: true },
+        { pattern: /\b(asthma)\b/i, name: 'Asthma', chronic: true },
+        { pattern: /\b(insomnia|sleep disorder|sleeplessness)\b/i, name: 'Insomnia', chronic: true },
+        { pattern: /\b(stemi|st.elevation|myocardial infarction|mi\b|heart attack|nstemi|acute coronary)\b/i, name: 'Acute MI/ACS', chronic: false },
+        { pattern: /\b(sepsis|septic)\b/i, name: 'Sepsis', chronic: false },
+        { pattern: /\b(pneumonia)\b/i, name: 'Pneumonia', chronic: false },
+        { pattern: /\b(hip fracture|fracture|broken bone)\b/i, name: 'Fracture', chronic: false },
+        { pattern: /\b(dvt|deep vein thrombosis|pulmonary embolism|pe\b|thromboembolism)\b/i, name: 'DVT/PE', chronic: false },
+        { pattern: /\b(constipation)\b/i, name: 'Constipation', chronic: false },
+        { pattern: /\b(fall risk|fall prevention|history of falls)\b/i, name: 'Fall Risk', chronic: false },
+        { pattern: /\b(acute kidney injury|aki|acute renal failure|rising creatinine)\b/i, name: 'Acute Kidney Injury', chronic: false },
+        { pattern: /\b(hyperkalemia|elevated potassium|high potassium)\b/i, name: 'Hyperkalemia', chronic: false },
+        { pattern: /\b(metabolic acidosis|low bicarbonate)\b/i, name: 'Metabolic Acidosis', chronic: false },
+        { pattern: /\b(angina|exertional chest pain|chest pain)\b/i, name: 'Angina/Chest Pain', chronic: false },
+        { pattern: /\b(diastolic dysfunction)\b/i, name: 'Diastolic Dysfunction', chronic: true },
+    ];
+
+    const SEVERITY_MODIFIERS = [
+        { pattern: /\b(stage\s*[3-5]|stage\s*(iii|iv|v))\b/i, severity: 'Advanced stage' },
+        { pattern: /\b(stage\s*[1-2]|stage\s*(i|ii))\b/i, severity: 'Early stage' },
+        { pattern: /\b(class\s*(iii|iv|3|4))\b/i, severity: 'Severe class' },
+        { pattern: /\b(severe|critical|life.threatening|emergent)\b/i, severity: 'Severe' },
+        { pattern: /\b(moderate)\b/i, severity: 'Moderate' },
+        { pattern: /\b(mild|minor)\b/i, severity: 'Mild' },
+        { pattern: /\b(decompensated|unstable|uncontrolled|poorly controlled|worsening|exacerbation|acute on chronic)\b/i, severity: 'Uncontrolled/Exacerbation' },
+        { pattern: /\b(compensated|stable|controlled|well.controlled|improved|improving)\b/i, severity: 'Stable/Controlled' },
+        { pattern: /\b(chronic|longstanding)\b/i, severity: 'Chronic' },
+        { pattern: /\b(acute|new onset|sudden)\b/i, severity: 'Acute' },
+    ];
+
+    // ===================== NEGATION DETECTION =====================
+    const NEGATION_PHRASES = ['denies','denied','no ','without','negative for','not ','never','none','absent','does not','did not','has not','no evidence of','rules out','ruled out','unremarkable','within normal','non-','non '];
+
+    function isNegated(sentence, matchIndex) {
+        const before = sentence.substring(Math.max(0, matchIndex - 60), matchIndex).toLowerCase();
+        return NEGATION_PHRASES.some(neg => before.includes(neg));
+    }
+
+    function splitSentences(text) {
+        return text.split(/(?<=[.!?\n])\s+/).filter(s => s.trim().length > 5);
+    }
+
+    // ===================== CONSULT-SPECIFIC DETECTION =====================
+    function isConsultVisit(visitType) {
+        return visitType === 'consult-outpatient' || visitType === 'consult-inpatient';
+    }
+
+    function detectConsult3Rs(text) {
+        const t = text;
+        const result = { r1: { found: false, evidence: '' }, r2: { found: false, evidence: '' }, r3: { found: false, evidence: '' } };
+        const r1Patterns = [
+            /\breferred by\b[^.;\n]{0,60}/i, /\brequest from\b[^.;\n]{0,60}/i, /\bper dr\.\s*\w+/i,
+            /\brequested by\b[^.;\n]{0,60}/i, /\bat the request of\b[^.;\n]{0,60}/i, /\bconsulting for\b[^.;\n]{0,60}/i,
+            /\basked to see\b[^.;\n]{0,60}/i, /\bsent by\b[^.;\n]{0,60}/i, /\breferral from\b[^.;\n]{0,60}/i,
+            /\bconsult(ation)? requested by\b[^.;\n]{0,80}/i, /\basked by dr\.\b[^.;\n]{0,60}/i,
+            /\bevaluated at request\b[^.;\n]{0,60}/i, /\brequesting provider:\s*[^.\n]+/i,
+            /\bthis consult(ation)? was requested by\b[^.;\n]{0,80}/i, /\bpatient referred by\b[^.;\n]{0,60}/i,
+        ];
+        for (const p of r1Patterns) {
+            const m = t.match(p);
+            if (m) { result.r1.found = true; result.r1.evidence = m[0].trim().substring(0, 120); break; }
+        }
+        const r2Patterns = [
+            /\bI evaluated\b[^.;\n]{0,60}/i, /\bI examined\b[^.;\n]{0,60}/i, /\bpatient was seen\b[^.;\n]{0,60}/i,
+            /\bI reviewed\b[^.;\n]{0,60}/i, /\bpatient presents\b[^.;\n]{0,60}/i, /\bI assessed\b[^.;\n]{0,60}/i,
+            /\bevaluation performed\b[^.;\n]{0,60}/i, /\bI saw the patient\b[^.;\n]{0,60}/i,
+            /\bI personally reviewed\b[^.;\n]{0,60}/i, /\bI independently reviewed\b[^.;\n]{0,60}/i,
+            /\bexam:/i, /\bphysical exam(ination)?:/i,
+        ];
+        for (const p of r2Patterns) {
+            const m = t.match(p);
+            if (m) { result.r2.found = true; result.r2.evidence = m[0].trim().substring(0, 120); break; }
+        }
+        const r3Patterns = [
+            /\bI will contact\b[^.;\n]{0,80}/i, /\breport sent to\b[^.;\n]{0,60}/i,
+            /\bcommunicated to\b[^.;\n]{0,60}/i, /\bI called dr\.\b[^.;\n]{0,60}/i,
+            /\bnote sent to\b[^.;\n]{0,60}/i, /\bletter sent\b[^.;\n]{0,60}/i,
+            /\bfaxed to\b[^.;\n]{0,60}/i, /\bwill notify\b[^.;\n]{0,60}/i,
+            /\breport to requesting physician\b[^.;\n]{0,60}/i, /\bdiscussed with referring\b[^.;\n]{0,60}/i,
+            /\bcommunicated findings\b[^.;\n]{0,60}/i, /\bI will inform\b[^.;\n]{0,60}/i,
+            /\bcopy sent to\b[^.;\n]{0,60}/i, /\bwill report back\b[^.;\n]{0,60}/i,
+            /\bcopy of this consult(ation)? report\b[^.;\n]{0,80}/i,
+            /\bwill communicate\b[^.;\n]{0,80}/i,
+            /\bI will communicate my findings\b[^.;\n]{0,80}/i,
+        ];
+        for (const p of r3Patterns) {
+            const m = t.match(p);
+            if (m) { result.r3.found = true; result.r3.evidence = m[0].trim().substring(0, 120); break; }
+        }
+        return result;
+    }
+
+    function detectConsultSpecialty(text) {
+        const t = text.toLowerCase();
+        if (/\b(cardiol|cardiac|heart|coronary|ekg|ecg|echo|catheterization|arrhythmia|palpitation|chest pain workup|angina|stemi|stress test)\b/i.test(t)) return 'Cardiology';
+        if (/\b(nephrol|kidney|ckd|gfr|creatinine workup|dialysis|proteinuria|acute kidney|renal)\b/i.test(t)) return 'Nephrology';
+        if (/\b(endocrin|thyroid|diabetes management|adrenal|pituitary|hormones?|hba1c management)\b/i.test(t)) return 'Endocrinology';
+        if (/\b(pulmonol|lung function|copd management|asthma management|pulmonary function|spirometry|osa evaluation)\b/i.test(t)) return 'Pulmonology';
+        if (/\b(gastroenterol|gi\b|colonoscopy|endoscopy|liver|hepatitis|ibd|crohn|ulcerative colitis)\b/i.test(t)) return 'Gastroenterology';
+        if (/\b(neurol|brain|seizure|stroke evaluation|headache evaluation|neuropathy|cognitive evaluation)\b/i.test(t)) return 'Neurology';
+        if (/\b(orthop|joint evaluation|fracture evaluation|spine|surgical evaluation|arthroplasty)\b/i.test(t)) return 'Orthopedics';
+        return 'General/Other';
+    }
+
+    // ===================== ADVANCED ANALYSIS ENGINE =====================
+    function detectMedications(text) {
+        const t = text.toLowerCase();
+        const found = [];
+        const allMeds = [...MEDICATIONS_DB.high_risk, ...MEDICATIONS_DB.common];
+        const seen = new Set();
+        for (const med of allMeds) {
+            const regex = new RegExp('\\b' + med.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+            const match = t.match(regex);
+            if (match && !seen.has(med)) {
+                seen.add(med);
+                const isHighRisk = MEDICATIONS_DB.high_risk.includes(med);
+                let action = 'Continue/Mentioned';
+                let actionType = 'refill';
+                const surrounding = t.substring(Math.max(0, match.index - 80), Math.min(t.length, match.index + 80));
+                if (/\b(start|begin|initiate|add|prescribe|loading dose|new|switch to)\b/.test(surrounding)) { action = 'New Start'; actionType = 'new'; }
+                else if (/\b(increase|uptitrate|titrate up|higher dose|change.*to|adjust)\b/.test(surrounding)) { action = 'Dose Increase'; actionType = 'change'; }
+                else if (/\b(decrease|reduce|lower|downtitrate|taper|wean)\b/.test(surrounding)) { action = 'Dose Decrease'; actionType = 'change'; }
+                else if (/\b(stop|discontinue|d\/c|hold)\b/.test(surrounding)) { action = 'Discontinued/Held'; actionType = 'discontinue'; }
+                else if (/\b(continue|maintain|refill|renew)\b/.test(surrounding)) { action = 'Continue'; actionType = 'refill'; }
+                found.push({ name: med.charAt(0).toUpperCase() + med.slice(1), action, actionType, isHighRisk, sourceSentence: surrounding.trim() });
+            }
+        }
+        return found;
+    }
+
+    function detectConditions(text) {
+        const sentences = splitSentences(text);
+        const found = [];
+        const seen = new Set();
+        for (const dx of DIAGNOSIS_DB) {
+            for (const sent of sentences) {
+                const match = sent.match(dx.pattern);
+                if (match && !seen.has(dx.name)) {
+                    if (!isNegated(sent, match.index)) {
+                        seen.add(dx.name);
+                        let severity = 'Not specified';
+                        let status = dx.chronic ? 'Chronic' : 'Acute';
+                        for (const mod of SEVERITY_MODIFIERS) {
+                            const surrounding = text.substring(Math.max(0, text.toLowerCase().indexOf(dx.name.toLowerCase().split('/')[0].split(' ')[0]) - 100), Math.min(text.length, text.toLowerCase().indexOf(dx.name.toLowerCase().split('/')[0].split(' ')[0]) + 150));
+                            if (mod.pattern.test(surrounding)) { severity = mod.severity; break; }
+                        }
+                        found.push({ name: dx.name, severity, status, chronic: dx.chronic, sourceSentence: sent.trim() });
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    function detectDataElements(text) {
+        const t = text.toLowerCase();
+        const sentences = splitSentences(text);
+        const elements = [];
+        const labPatterns = [
+            { pattern: /\b(hba1c|a1c|hemoglobin a1c|hgba1c)\b/i, name: 'HbA1c', category: 'Lab - Endocrine' },
+            { pattern: /\b(cbc|complete blood count|hemoglobin|hgb|wbc|platelets|hematocrit)\b/i, name: 'CBC', category: 'Lab - Hematology' },
+            { pattern: /\b(bmp|basic metabolic|cmp|comprehensive metabolic|electrolytes|sodium|potassium|creatinine|bun|glucose|calcium|bicarbonate|chloride)\b/i, name: 'BMP/CMP', category: 'Lab - Chemistry' },
+            { pattern: /\b(lipid panel|ldl|hdl|triglycerides|total cholesterol)\b/i, name: 'Lipid Panel', category: 'Lab - Lipids' },
+            { pattern: /\b(tsh|thyroid stimulating|t3|t4|free t4)\b/i, name: 'Thyroid Panel', category: 'Lab - Endocrine' },
+            { pattern: /\b(psa|prostate specific)\b/i, name: 'PSA', category: 'Lab - Oncology' },
+            { pattern: /\b(urinalysis|urine culture|urine microalbumin|microalbumin|urine drug|urine sodium|urine eosinophils)\b/i, name: 'Urinalysis/Urine', category: 'Lab - Urine' },
+            { pattern: /\b(pt\/inr|inr|prothrombin time|coagulation)\b/i, name: 'PT/INR', category: 'Lab - Coagulation' },
+            { pattern: /\b(bnp|pro.bnp|brain natriuretic)\b/i, name: 'BNP', category: 'Lab - Cardiac' },
+            { pattern: /\b(troponin|trop)\b/i, name: 'Troponin', category: 'Lab - Cardiac' },
+            { pattern: /\b(fasting glucose)\b/i, name: 'Fasting Glucose', category: 'Lab - Chemistry' },
+            { pattern: /\b(phq.?9)\b/i, name: 'PHQ-9', category: 'Screening Tool' },
+            { pattern: /\b(gad.?7)\b/i, name: 'GAD-7', category: 'Screening Tool' },
+            { pattern: /\b(mmse|mini.mental|moca)\b/i, name: 'Cognitive Screen', category: 'Screening Tool' },
+            { pattern: /\b(vancomycin trough|vanco trough|drug level)\b/i, name: 'Drug Level', category: 'Lab - Therapeutic' },
+            { pattern: /\b(blood culture)\b/i, name: 'Blood Culture', category: 'Lab - Microbiology' },
+        ];
+        const imagingPatterns = [
+            { pattern: /\b(chest x.?ray|cxr)\b/i, name: 'Chest X-ray', category: 'Imaging' },
+            { pattern: /\b(ct scan|ct\s|ct chest|computed tomography)\b/i, name: 'CT Scan', category: 'Imaging' },
+            { pattern: /\b(mri|magnetic resonance)\b/i, name: 'MRI', category: 'Imaging' },
+            { pattern: /\b(renal ultrasound|kidney ultrasound)\b/i, name: 'Renal Ultrasound', category: 'Imaging' },
+            { pattern: /\b(ultrasound|sonography)\b/i, name: 'Ultrasound', category: 'Imaging' },
+            { pattern: /\b(echocardiogram|echo|transthoracic|tte|tee)\b/i, name: 'Echocardiogram', category: 'Imaging - Cardiac' },
+            { pattern: /\b(stress test|exercise test|nuclear stress)\b/i, name: 'Stress Test', category: 'Cardiac Testing' },
+            { pattern: /\b(colonoscopy|endoscopy)\b/i, name: 'Endoscopy', category: 'Procedure' },
+        ];
+        const otherPatterns = [
+            { pattern: /\b(ekg|ecg|electrocardiogram)\b/i, name: 'EKG/ECG', category: 'Cardiac Testing' },
+            { pattern: /\b(outside records|external records|hospital records|previous records|reviewed records|reviewed notes|outpatient records|pcp records)\b/i, name: 'External Records', category: 'External Data' },
+            { pattern: /\b(independently|personally reviewed|i reviewed|independent interpretation|i personally)\b/i, name: 'Independent Interpretation', category: 'Physician Interpretation' },
+            { pattern: /\b(discussed with|spoke with|consulted with|called|communicated with|phone.*dr|dr.*phone|discussed.*case.*with)\b/i, name: 'Provider Discussion', category: 'External Communication' },
+        ];
+        const allPatterns = [...labPatterns, ...imagingPatterns, ...otherPatterns];
+        const seen = new Set();
+        for (const dp of allPatterns) {
+            for (const sent of sentences) {
+                if (dp.pattern.test(sent) && !seen.has(dp.name)) {
+                    if (!isNegated(sent, sent.search(dp.pattern))) {
+                        seen.add(dp.name);
+                        let credit = 'Category 1 (ordered/reviewed)';
+                        if (dp.category === 'External Data') credit = 'Category 1 (external records)';
+                        if (dp.category === 'Physician Interpretation') credit = 'Category 2 (independent interp.)';
+                        if (dp.category === 'External Communication') credit = 'Category 2 (discussion)';
+                        if (dp.category === 'Screening Tool') credit = 'Category 1 (assessment tool)';
+                        elements.push({ name: dp.name, category: dp.category, credit, sourceSentence: sent.trim() });
+                    }
+                }
+            }
+        }
+        return elements;
+    }
+
+    function detectSocialDeterminants(text) {
+        const t = text.toLowerCase();
+        const determinants = [];
+        const patterns = [
+            { p: /\b(food insecurity|food desert|food access|hungry|hunger|nutrition access)\b/i, name: 'Food Insecurity' },
+            { p: /\b(housing instability|homeless|unhoused|shelter|housing insecure)\b/i, name: 'Housing Instability' },
+            { p: /\b(transportation barrier|no transportation|cannot drive|limited transport)\b/i, name: 'Transportation Barrier' },
+            { p: /\b(language barrier|interpreter|limited english|non-english)\b/i, name: 'Language Barrier' },
+            { p: /\b(financial hardship|uninsured|underinsured|cannot afford|cost barrier)\b/i, name: 'Financial Hardship' },
+            { p: /\b(social isolation|lives alone|no social support|caregiver burden)\b/i, name: 'Social Isolation' },
+            { p: /\b(substance|alcohol|drug use|smoking|tobacco|nicotine|pack.year)\b/i, name: 'Substance Use' },
+        ];
+        for (const { p, name } of patterns) {
+            if (p.test(t)) determinants.push(name);
+        }
+        return determinants;
+    }
+
+    function detectSpecialtyContext(text) {
+        const t = text.toLowerCase();
+        const specialties = [];
+        if (/cardio|cardiac|heart|coronary|stemi|mi\b|echocardiogram|ejection fraction|ef\b|bnp|troponin/i.test(t)) specialties.push('Cardiology');
+        if (/endocrin|diabetes|thyroid|hba1c|insulin|glucose management/i.test(t)) specialties.push('Endocrinology');
+        if (/neurol|stroke|seizure|headache|neuropathy|dementia|cognitive/i.test(t)) specialties.push('Neurology');
+        if (/nephrol|kidney|renal|ckd|dialysis|creatinine clearance|gfr|acute kidney/i.test(t)) specialties.push('Nephrology');
+        if (/pulmon|respiratory|copd|asthma|pneumonia|oxygen|ventilat/i.test(t)) specialties.push('Pulmonology');
+        if (/psych|mental|depression|anxiety|bipolar|schizophrenia|suicid/i.test(t)) specialties.push('Psychiatry');
+        if (/orthop|fracture|joint|arthroplasty|orif|physical therapy/i.test(t)) specialties.push('Orthopedics');
+        if (/oncol|cancer|chemo|tumor|malignant|biopsy|staging/i.test(t)) specialties.push('Oncology');
+        return specialties;
+    }
+
+    // ===================== ADVANCED MDM SCORING =====================
+    function scoreProblemsAdvanced(text, conditions, medications) {
+        const evidence = [];
+        const sentences = splitSentences(text);
+        let level = 'Minimal';
+        const chronicCount = conditions.filter(c => c.chronic).length;
+        const acuteCount = conditions.filter(c => !c.chronic).length;
+
+        const highPatterns = [/severe\s*exacerbation/i, /threat\s*to\s*life/i, /hospitalization|admit\b/i, /acute\s*(mi|stemi|nstemi|stroke|sepsis)/i, /respiratory failure/i, /organ failure/i, /acute\s*on\s*chronic.*decompens/i, /decompensated/i, /emergent|life.threatening/i, /nyha\s*(class)?\s*(iii|iv|3|4)/i, /code\s*(blue|stemi|stroke)/i, /acute kidney injury/i, /kdigo\s*stage\s*[2-3]/i];
+        for (const pat of highPatterns) {
+            for (const sent of sentences) {
+                const m = sent.match(pat);
+                if (m && !isNegated(sent, m.index)) {
+                    evidence.push({ text: `High-complexity finding: "${m[0]}"`, source: sent.trim() });
+                    level = 'High';
+                }
+            }
+        }
+        if (level === 'High') return { level, evidence };
+
+        const moderatePatterns = [/\b(uncontrolled|poorly controlled|worsening|not at goal)\b/i, /\bexacerbation\b/i, /\bnew\s*(diagnosis|problem)\b/i, /\brule\s*out\b/i, /\badditional\s*workup\b/i, /\bmultifactorial\b/i];
+        for (const pat of moderatePatterns) {
+            for (const sent of sentences) {
+                const m = sent.match(pat);
+                if (m && !isNegated(sent, m.index)) {
+                    evidence.push({ text: `Moderate-complexity finding: "${m[0]}"`, source: sent.trim() });
+                    level = 'Moderate';
+                }
+            }
+        }
+        const newMeds = medications.filter(m => m.actionType === 'new');
+        const changedMeds = medications.filter(m => m.actionType === 'change');
+        if (newMeds.length > 0) { evidence.push({ text: `${newMeds.length} new medication(s) started`, source: newMeds.map(m => m.name).join(', ') }); level = 'Moderate'; }
+        if (changedMeds.length > 0) { evidence.push({ text: `${changedMeds.length} medication dose change(s)`, source: changedMeds.map(m => m.name).join(', ') }); level = 'Moderate'; }
+        if (chronicCount >= 2) { evidence.push({ text: `${chronicCount} chronic conditions identified`, source: conditions.filter(c => c.chronic).map(c => c.name).join(', ') }); if (level !== 'Moderate') level = 'Moderate'; }
+        if (level === 'Moderate') return { level, evidence };
+
+        if (chronicCount >= 1) { evidence.push({ text: `${chronicCount} chronic condition(s) identified (stable)`, source: conditions.filter(c => c.chronic).map(c => c.name).join(', ') }); level = 'Low'; }
+        const selfLimitedKw = ['cold','uri','rash','sprain','conjunctivitis','ear infection','sinus','minor','insect bite','laceration'];
+        let slCount = 0;
+        for (const kw of selfLimitedKw) { if (text.toLowerCase().includes(kw)) slCount++; }
+        if (slCount >= 2) { evidence.push({ text: `${slCount} self-limited/minor problems detected`, source: '' }); level = 'Low'; }
+        if (level === 'Low') return { level, evidence };
+
+        if (slCount >= 1) evidence.push({ text: '1 self-limited/minor problem', source: '' });
+        else if (conditions.length > 0) evidence.push({ text: `${conditions.length} condition(s) with minimal complexity`, source: '' });
+        else evidence.push({ text: 'Minimal problem complexity detected', source: '' });
+        return { level, evidence };
+    }
+
+    function scoreDataAdvanced(text, dataElements) {
+        const evidence = [];
+        let cat1Count = 0, cat2Count = 0;
+        const cat1Items = dataElements.filter(d => d.credit.startsWith('Category 1'));
+        const cat2Items = dataElements.filter(d => d.credit.startsWith('Category 2'));
+        cat1Count = cat1Items.length;
+        cat2Count = cat2Items.length;
+        for (const item of cat1Items) evidence.push({ text: `${item.category}: ${item.name}`, source: item.sourceSentence });
+        for (const item of cat2Items) evidence.push({ text: `${item.category}: ${item.name}`, source: item.sourceSentence });
+        if (/results?\s*(indicate|show|reveal|demonstrate|confirm)|worsened\s*from|previously|compared\s*to|prior/i.test(text)) {
+            evidence.push({ text: 'Assessment/comparison of prior results documented', source: '' });
+            cat1Count++;
+        }
+        let level = 'Minimal';
+        if (cat2Count >= 1 && cat1Count >= 3) level = 'High';
+        else if (cat2Count >= 1 || cat1Count >= 3) level = 'Moderate';
+        else if (cat1Count >= 1) level = 'Low';
+        if (evidence.length === 0) evidence.push({ text: 'Minimal or no data reviewed/ordered', source: '' });
+        return { level, evidence, cat1Count, cat2Count };
+    }
+
+    function scoreRiskAdvanced(text, medications, conditions, socialDeterminants) {
+        const evidence = [];
+        let level = 'Minimal';
+
+        const highRiskMeds = medications.filter(m => m.isHighRisk && (m.actionType === 'new' || m.actionType === 'change'));
+        if (highRiskMeds.length > 0) {
+            evidence.push({ text: `High-risk drug management: ${highRiskMeds.map(m => m.name).join(', ')}`, source: '' });
+            level = 'High';
+        }
+        const highRiskPatterns = [/\b(hospitali[sz]|admit|admitted|icu|intensive care)\b/i, /\b(iv\s*medication|iv\s*diuresis|iv\s*antibiotics|parenteral)\b/i, /\b(decision.*surgery|emergent\s*(procedure|surgery|cath|pci))\b/i, /\b(intubat|mechanical ventilat)\b/i, /\b(threat\s*to\s*life|life.threatening)\b/i, /\b(nephrotoxic|supratherapeutic)\b/i, /\b(hemodialysis|temporary dialysis)\b/i];
+        for (const pat of highRiskPatterns) {
+            const m = text.match(pat);
+            if (m) { evidence.push({ text: `High risk: "${m[0]}"`, source: '' }); level = 'High'; }
+        }
+        if (level === 'High') return { level, evidence };
+
+        const newOrChangedMeds = medications.filter(m => m.actionType === 'new' || m.actionType === 'change');
+        if (newOrChangedMeds.length > 0) {
+            evidence.push({ text: `Prescription drug management: ${newOrChangedMeds.length} medication(s) started/changed`, source: newOrChangedMeds.map(m => `${m.name} (${m.action})`).join(', ') });
+            level = 'Moderate';
+        }
+        if (socialDeterminants.length > 0) {
+            evidence.push({ text: `Social determinants of health: ${socialDeterminants.join(', ')}`, source: '' });
+            if (level !== 'Moderate') level = 'Moderate';
+        }
+        if (/\b(referr|referred|specialist|consult)\b/i.test(text)) {
+            evidence.push({ text: 'Referral placed', source: '' });
+            if (level !== 'Moderate') level = 'Moderate';
+        }
+        if (level === 'Moderate') return { level, evidence };
+
+        if (/\b(prescription|refill|prescribed|otc|over the counter)\b/i.test(text)) {
+            evidence.push({ text: 'Prescription drug management (OTC or refill)', source: '' });
+            level = 'Low';
+        }
+        if (/\b(follow.up|recheck|return)\b/i.test(text)) {
+            evidence.push({ text: 'Follow-up scheduled', source: '' });
+            if (level !== 'Low') level = 'Low';
+        }
+        if (level === 'Low') return { level, evidence };
+
+        evidence.push({ text: 'No significant risk factors documented', source: '' });
+        return { level, evidence };
+    }
+
+    function determineMDMLevel(p, d, r) {
+        const levels = [p, d, r].map(x => LEVEL_NAMES.indexOf(x));
+        levels.sort((a, b) => b - a);
+        return LEVEL_NAMES[levels[1]];
+    }
+
+    // ===================== CPT CODE LOGIC =====================
+    function getPreventiveCode(age, isNew) {
+        const prefix = isNew ? '9938' : '9939';
+        if (age < 1) return prefix + '1';
+        if (age <= 4) return prefix + '2';
+        if (age <= 11) return prefix + '3';
+        if (age <= 17) return prefix + '4';
+        if (age <= 39) return prefix + '5';
+        if (age <= 64) return prefix + '6';
+        return prefix + '7';
+    }
+
+    function getCPTCode(mdmLevel, patientType, visitType) {
+        const lvl = LEVEL_NUMS[mdmLevel] || 2;
+        if (visitType === 'office' || visitType === 'telehealth') {
+            if (patientType === 'new') return { code: `9920${lvl}`, family: 'new' };
+            else return { code: `9921${lvl}`, family: 'established' };
+        } else if (visitType === 'consult-outpatient') {
+            if (lvl <= 3) return { code: `9924${lvl}`, family: 'consult-outpatient' };
+            return { code: `9924${lvl}`, family: 'consult-outpatient' };
+        } else if (visitType === 'consult-inpatient') {
+            if (lvl <= 3) return { code: `9925${lvl}`, family: 'consult-inpatient' };
+            return { code: `9925${lvl}`, family: 'consult-inpatient' };
+        } else if (visitType === 'inpatient-initial') {
+            if (lvl <= 3) return { code: '99221', family: 'inpatient-initial' };
+            if (lvl === 4) return { code: '99222', family: 'inpatient-initial' };
+            return { code: '99223', family: 'inpatient-initial' };
+        } else if (visitType === 'inpatient-subsequent') {
+            if (lvl <= 3) return { code: '99231', family: 'inpatient-subsequent' };
+            if (lvl === 4) return { code: '99232', family: 'inpatient-subsequent' };
+            return { code: '99233', family: 'inpatient-subsequent' };
+        } else if (visitType === 'ed') {
+            if (lvl <= 2) return { code: '99281', family: 'ed' };
+            if (lvl === 3) return { code: '99283', family: 'ed' };
+            if (lvl === 4) return { code: '99284', family: 'ed' };
+            return { code: '99285', family: 'ed' };
+        } else if (visitType === 'nf-initial') {
+            if (lvl <= 3) return { code: '99304', family: 'nf-initial' };
+            if (lvl === 4) return { code: '99305', family: 'nf-initial' };
+            return { code: '99306', family: 'nf-initial' };
+        } else if (visitType === 'nf-subsequent') {
+            if (lvl <= 2) return { code: '99307', family: 'nf-subsequent' };
+            if (lvl === 3) return { code: '99308', family: 'nf-subsequent' };
+            if (lvl === 4) return { code: '99309', family: 'nf-subsequent' };
+            return { code: '99310', family: 'nf-subsequent' };
+        } else if (visitType === 'preventive-new' || visitType === 'preventive-established') {
+            const age = parseInt(document.getElementById('patient-age').value) || 45;
+            const isNew = visitType === 'preventive-new';
+            const code = getPreventiveCode(age, isNew);
+            return { code, family: 'preventive' };
+        }
+        return { code: `9921${lvl}`, family: 'established' };
+    }
+
+    function detectDocComponents(text) {
+        const components = {};
+        components.chiefComplaint = /cc:|chief complaint:|presents with|here for|presenting for|follow-up for|follow up for|reason for consult/i.test(text);
+        const hpi = { onset: false, location: false, duration: false, character: false, aggravating: false, relieving: false, timing: false, severity: false };
+        if (/\b(start|began|onset|since|for the past|over the past|ago)\b/i.test(text)) hpi.onset = true;
+        if (/\b(location|located|in the|area|region|left|right|bilateral|chest|abdomen|head|back|leg|arm|neck|substernal|hip|flank)\b/i.test(text)) hpi.location = true;
+        if (/\b(duration|lasting|for \d|past \d|weeks?|months?|days?|hours?|years?)\b/i.test(text)) hpi.duration = true;
+        if (/\b(character|sharp|dull|burning|aching|throbbing|stabbing|cramping|pressure|radiating|running higher|ranging|pressure.like)\b/i.test(text)) hpi.character = true;
+        if (/\b(aggravat|worsen|exacerbat|trigger|poor dietary|non-compliance|worse with)\b/i.test(text)) hpi.aggravating = true;
+        if (/\b(reliev|improv|better with|alleviat|complia|compliant|resolved|partial relief|resolves with rest)\b/i.test(text)) hpi.relieving = true;
+        if (/\b(timing|constant|intermittent|occasional|morning|evening|night|daily|weekly|fasting|at rest|on exertion)\b/i.test(text)) hpi.timing = true;
+        if (/\b(severity|severe|mild|moderate|slight|significant|wors|\d+\/10|rated|elevated|increased)\b/i.test(text)) hpi.severity = true;
+        components.hpiElements = hpi;
+        components.hpiCount = Object.values(hpi).filter(Boolean).length;
+        components.ros = /ros:|review of systems:|denies|constitutional|cardiovascular|respiratory|gastrointestinal|musculoskeletal|neurological|endocrine|psychiatric|genitourinary|integumentary/i.test(text);
+        components.physicalExam = /pe:|physical exam:|exam:|vitals:|bp\s*\d|hr\s*\d|temp\s*\d|general:|heent:|cardiovascular:|respiratory:|abdomen:|extremit|auscultation|rrr|perrla|perrl/i.test(text);
+        components.assessment = /assessment:|a:|impression:|diagnosis:|diagnos|assessment and plan/i.test(text);
+        components.plan = /plan:|p:|treatment plan|follow-up|follow up|return to clinic|recheck|referral|recommendations:/i.test(text);
+        components.timeDoc = /total time|total face-to-face|minutes spent|\d+\s*min(ute)?s?\s*(spent|total|of)/i.test(text);
+        return components;
+    }
+
+    // ===================== MAIN ANALYSIS FUNCTION =====================
+    function analyzeNote(text, patientType, visitType) {
+        const conditions = detectConditions(text);
+        const medications = detectMedications(text);
+        const dataElements = detectDataElements(text);
+        const socialDeterminants = detectSocialDeterminants(text);
+        const specialties = detectSpecialtyContext(text);
+        const docs = detectDocComponents(text);
+        const isPreventive = visitType.startsWith('preventive');
+        const isConsult = isConsultVisit(visitType);
+        let problems, data, risk, mdmLevel, cpt;
+        let consult3Rs = null;
+        let consultSpecialty = null;
+
+        if (isPreventive) {
+            const age = parseInt(document.getElementById('patient-age').value) || 45;
+            const isNew = visitType === 'preventive-new';
+            const code = getPreventiveCode(age, isNew);
+            problems = { level: 'N/A', evidence: [{ text: 'Preventive visits are not coded by MDM', source: '' }] };
+            data = { level: 'N/A', evidence: [{ text: 'Age-based coding applies', source: '' }], cat1Count: 0, cat2Count: 0 };
+            risk = { level: 'N/A', evidence: [{ text: 'See preventive coding guidelines', source: '' }] };
+            mdmLevel = 'N/A';
+            cpt = { code, family: 'preventive' };
+        } else {
+            problems = scoreProblemsAdvanced(text, conditions, medications);
+            data = scoreDataAdvanced(text, dataElements);
+            risk = scoreRiskAdvanced(text, medications, conditions, socialDeterminants);
+            mdmLevel = determineMDMLevel(problems.level, data.level, risk.level);
+            cpt = getCPTCode(mdmLevel, patientType, visitType);
+        }
+
+        if (isConsult) {
+            consult3Rs = detectConsult3Rs(text);
+            consultSpecialty = detectConsultSpecialty(text);
+        }
+
+        let confidence = 50;
+        if (docs.chiefComplaint) confidence += 6;
+        if (docs.assessment) confidence += 6;
+        if (docs.plan) confidence += 6;
+        if (docs.hpiCount >= 6) confidence += 8;
+        else if (docs.hpiCount >= 4) confidence += 5;
+        else if (docs.hpiCount >= 2) confidence += 3;
+        if (docs.ros) confidence += 4;
+        if (docs.physicalExam) confidence += 4;
+        if (docs.timeDoc) confidence += 3;
+        const noteLen = text.length;
+        if (noteLen > 2000) confidence += 5;
+        else if (noteLen > 1000) confidence += 3;
+        if (!isPreventive) {
+            if (problems.evidence.length >= 3) confidence += 3;
+            if (data.evidence.length >= 3) confidence += 3;
+            if (risk.evidence.length >= 2) confidence += 2;
+        }
+        if (conditions.length >= 2) confidence += 2;
+        if (medications.length >= 2) confidence += 2;
+        if (isConsult && consult3Rs) {
+            if (consult3Rs.r1.found) confidence += 2;
+            if (consult3Rs.r2.found) confidence += 1;
+            if (consult3Rs.r3.found) confidence += 2;
+            if (!consult3Rs.r1.found || !consult3Rs.r3.found) confidence -= 5;
+        }
+        confidence = Math.max(30, Math.min(confidence, 98));
+
+        let canUpgrade = false, nextLevel = null, nextCpt = null;
+        if (!isPreventive) {
+            const currentLvlIdx = LEVEL_NAMES.indexOf(mdmLevel);
+            canUpgrade = currentLvlIdx < 3;
+            nextLevel = canUpgrade ? LEVEL_NAMES[currentLvlIdx + 1] : null;
+            nextCpt = canUpgrade ? getCPTCode(nextLevel, patientType, visitType) : null;
+        }
+
+        return {
+            problems, data, risk, mdmLevel, cpt, docs, confidence,
+            canUpgrade, nextLevel, nextCpt,
+            conditions, medications, dataElements, socialDeterminants, specialties,
+            originalText: text, patientType, visitType, isPreventive, isConsult,
+            consult3Rs, consultSpecialty
+        };
+    }
+
+    // ===================== OPTIMIZED NOTE GENERATOR =====================
+    function generateOptimizedNote(result) {
+        const text = result.originalText;
+        const changes = [];
+        const lines = text.split('\n');
+        let cc='',hpiText='',rosText='',examText='',assessText='',planText='',headerLines=[],labText='';
+        let currentSection = 'header';
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            const lower = trimmed.toLowerCase();
+            if (lower.startsWith('cc:') || lower.startsWith('chief complaint:') || /^(presents|presenting|here) (with|for)/i.test(lower) || /^follow.up for/i.test(lower)) { currentSection='cc'; cc+=trimmed+'\n'; continue; }
+            if (lower.startsWith('hpi:') || lower.startsWith('history of present illness')) { currentSection='hpi'; hpiText+=trimmed+'\n'; continue; }
+            if (lower.startsWith('ros:') || lower.startsWith('review of systems')) { currentSection='ros'; rosText+=trimmed+'\n'; continue; }
+            if (lower.startsWith('exam:') || lower.startsWith('physical exam:') || lower.startsWith('pe:') || lower.startsWith('vitals:')) { currentSection='exam'; examText+=trimmed+'\n'; continue; }
+            if (lower.startsWith('labs') || lower.startsWith('lab ') || lower.includes('lab results') || lower.includes('labs reviewed') || lower.startsWith('i personally reviewed') || lower.startsWith('i independently reviewed') || lower.startsWith('i reviewed')) { currentSection='labs'; labText+=trimmed+'\n'; continue; }
+            if (/^(assessment|a:|impression:|assessment and plan)/i.test(lower)) { currentSection='assessment'; assessText+=trimmed+'\n'; continue; }
+            if (/^(plan:|p:|recommendations:)/i.test(lower)) { currentSection='plan'; planText+=trimmed+'\n'; continue; }
+            switch(currentSection) {
+                case 'header': headerLines.push(trimmed); break;
+                case 'cc': cc+=trimmed+'\n'; break;
+                case 'hpi': hpiText+=trimmed+'\n'; break;
+                case 'ros': rosText+=trimmed+'\n'; break;
+                case 'exam': examText+=trimmed+'\n'; break;
+                case 'labs': labText+=trimmed+'\n'; break;
+                case 'assessment': assessText+=trimmed+'\n'; break;
+                case 'plan': planText+=trimmed+'\n'; break;
+            }
+        }
+        if (!planText.trim() && assessText.includes('\n')) {
+            const assessLines = assessText.split('\n').filter(l => l.trim());
+            let planStart = -1;
+            for (let i = 0; i < assessLines.length; i++) {
+                if (/^plan:|^recommendations:|^\d+\.\s*(start|increase|continue|add|refer|follow|order|recheck|monitor|stop|discontinue|hold)/i.test(assessLines[i].trim())) { planStart = i; break; }
+            }
+            if (planStart > 0) {
+                planText = assessLines.slice(planStart).join('\n') + '\n';
+                assessText = assessLines.slice(0, planStart).join('\n') + '\n';
+                changes.push('Separated merged Assessment and Plan into distinct sections');
+            }
+        }
+        let note = '';
+
+        if (result.isConsult) {
+            note += '═══════════════════════════════════════\nCONSULTATION NOTE\n═══════════════════════════════════════\n\n';
+            let requestingProvider = '[Requesting provider/specialty — please specify]';
+            if (result.consult3Rs && result.consult3Rs.r1.found) {
+                const rpMatch = text.match(/requesting provider:\s*([^\n]+)/i) || text.match(/requested by\s+(dr\.?\s*\w+[^.;\n]{0,40})/i) || text.match(/referred by\s+(dr\.?\s*\w+[^.;\n]{0,40})/i) || text.match(/consult(ation)? requested by\s+(dr\.?\s*\w+[^.;\n]{0,40})/i);
+                if (rpMatch) requestingProvider = (rpMatch[2] || rpMatch[1]).trim();
+            }
+            note += `Requesting Provider: ${requestingProvider}\n`;
+            const reasonMatch = text.match(/reason for consult(ation)?:\s*([^\n]+)/i);
+            note += `Reason for Consultation: ${reasonMatch ? reasonMatch[2].trim() : '[Reason for consultation]'}\n`;
+            if (result.consultSpecialty) note += `Consulting Specialty: ${result.consultSpecialty}\n`;
+            note += '\n';
+            if (result.consult3Rs && !result.consult3Rs.r1.found) {
+                note += `This consultation was requested by ${requestingProvider}.\n\n`;
+                changes.push('Added missing R1 (Request) documentation for consult requirements');
+            }
+            if (headerLines.length > 0) {
+                const filteredHeaders = headerLines.filter(l => !/^consultation note$/i.test(l) && !/^requesting provider:/i.test(l) && !/^reason for consult/i.test(l) && !/^consulting specialty:/i.test(l) && !/^this consult(ation)? was requested/i.test(l));
+                if (filteredHeaders.length > 0) note += filteredHeaders.join('\n') + '\n\n';
+            }
+            changes.push('Structured note as formal Consultation Note with required headers');
+        } else {
+            if (headerLines.length > 0) note += headerLines.join('\n') + '\n\n';
+        }
+
+        if (result.visitType === 'telehealth') {
+            note += '═══════════════════════════════════════\nVISIT TYPE: TELEHEALTH (Modifier -95)\n═══════════════════════════════════════\nThis visit was conducted via synchronous, real-time audio/video telehealth platform.\nPatient provided verbal consent for telehealth visit.\n\n';
+            changes.push('Added telehealth visit documentation header with modifier note');
+        }
+
+        note += '═══════════════════════════════════════\n' + (result.isConsult ? 'REASON FOR CONSULTATION / CHIEF COMPLAINT' : 'CHIEF COMPLAINT') + '\n═══════════════════════════════════════\n';
+        if (cc.trim()) note += cc.trim().replace(/^(cc:|chief complaint:)\s*/i, '') + '\n';
+        else { note += '[Chief complaint extracted from note context]\n'; changes.push('Added structured Chief Complaint section header'); }
+        note += '\n═══════════════════════════════════════\nHISTORY OF PRESENT ILLNESS (HPI)\n═══════════════════════════════════════\n';
+        let hpiContent = (hpiText || cc).trim().replace(/^(hpi:|history of present illness:?)\s*/i, '');
+        if (hpiContent) note += hpiContent + '\n';
+        const hpi = result.docs.hpiElements;
+        if (!hpi.onset && /follow.up/i.test(text)) { note += '\nOnset: Patient presents for ongoing management of previously diagnosed conditions.\n'; changes.push('Added HPI onset element'); }
+        if (!hpi.severity && /poorly controlled|uncontrolled|worsening/i.test(text)) { note += '\nSeverity: Condition(s) currently poorly controlled as evidenced by objective data.\n'; changes.push('Added HPI severity element'); }
+        note += '\n═══════════════════════════════════════\nREVIEW OF SYSTEMS (ROS)\n═══════════════════════════════════════\n';
+        if (rosText.trim()) {
+            note += rosText.trim().replace(/^(ros:|review of systems:?)\s*/i, '') + '\n';
+            const rosSystemsInNote = (rosText.match(/(constitutional|cardiovascular|respiratory|gastrointestinal|musculoskeletal|neurological|endocrine|psychiatric|genitourinary|integumentary)/gi) || []).length;
+            if (rosSystemsInNote < 10) {
+                const missing = [];
+                if (!/gastrointestinal/i.test(rosText)) missing.push('Gastrointestinal: Denies nausea, vomiting, diarrhea, abdominal pain');
+                if (!/musculoskeletal/i.test(rosText)) missing.push('Musculoskeletal: Denies joint pain, swelling, muscle weakness');
+                if (!/psychiatric/i.test(rosText)) missing.push('Psychiatric: Denies depression, anxiety, sleep disturbance');
+                if (!/integumentary|skin/i.test(rosText)) missing.push('Integumentary: Denies rashes, lesions, skin changes');
+                if (missing.length > 0) { note += '\nAdditional systems reviewed:\n' + missing.join('\n') + '\n'; changes.push(`Added ${missing.length} additional ROS systems`); }
+            }
+        } else {
+            note += 'Review of systems obtained and documented within HPI.\n';
+            changes.push('Added structured ROS section header');
+        }
+        note += '\n═══════════════════════════════════════\nPHYSICAL EXAMINATION\n═══════════════════════════════════════\n';
+        if (examText.trim()) note += examText.trim().replace(/^(exam:|physical exam:|pe:|vitals:)\s*/i, '') + '\n';
+        if (labText.trim() || result.dataElements.length > 0) {
+            note += '\n═══════════════════════════════════════\nDATA REVIEWED AND INTERPRETED\n═══════════════════════════════════════\n';
+            if (labText.trim()) note += labText.trim().replace(/^labs?\s*(reviewed|results)?:?\s*/i, '') + '\n';
+            if (!/independently|personally|i reviewed/i.test(text)) { note += '\nI personally reviewed and interpreted the above laboratory and diagnostic results.\n'; changes.push('Added independent interpretation statement (MDM Element 2)'); }
+            if (/previously|prior|worsened from|compared/i.test(text)) { note += 'Comparison with prior results was performed to assess disease trajectory.\n'; changes.push('Added comparison documentation for prior results'); }
+        }
+        if (result.medications.length >= 2) {
+            note += '\n═══════════════════════════════════════\nMEDICATION RECONCILIATION\n═══════════════════════════════════════\n';
+            note += 'Medication'.padEnd(25) + 'Action'.padEnd(20) + 'Risk\n';
+            note += '─'.repeat(55) + '\n';
+            for (const med of result.medications) {
+                note += med.name.padEnd(25) + med.action.padEnd(20) + (med.isHighRisk ? 'HIGH RISK' : 'Standard') + '\n';
+            }
+            changes.push('Generated structured medication reconciliation table');
+        }
+
+        if (result.isConsult) {
+            note += '\n═══════════════════════════════════════\nCONSULTING PHYSICIAN\'S FINDINGS AND RECOMMENDATIONS\n═══════════════════════════════════════\n';
+        }
+
+        note += '\n═══════════════════════════════════════\nASSESSMENT\n═══════════════════════════════════════\n';
+        if (assessText.trim()) note += assessText.trim().replace(/^(assessment:|a:|impression:)\s*/i, '') + '\n';
+        if (!/complexity|complex|multiple.*factors|interplay/i.test(text) && result.conditions.length >= 2) { note += '\nClinical complexity: Multiple chronic conditions with interrelated management considerations requiring careful coordination.\n'; changes.push('Added clinical complexity statement (MDM Element 1)'); }
+
+        note += '\n═══════════════════════════════════════\n' + (result.isConsult ? 'RECOMMENDATIONS' : 'PLAN') + '\n═══════════════════════════════════════\n';
+        if (planText.trim()) note += planText.trim().replace(/^(plan:|p:|recommendations:)\s*/i, '') + '\n';
+        if (result.socialDeterminants.length > 0) { note += '\nSocial Determinants Addressed: ' + result.socialDeterminants.join(', ') + '\n'; }
+
+        if (result.isConsult) {
+            note += '\n═══════════════════════════════════════\nREPORT / COMMUNICATION\n═══════════════════════════════════════\n';
+            if (result.consult3Rs && result.consult3Rs.r3.found) {
+                note += 'Communication documentation present in original note.\n';
+            } else {
+                let requestingProvider = 'the requesting provider';
+                if (result.consult3Rs && result.consult3Rs.r1.found) {
+                    const rpMatch = text.match(/requesting provider:\s*([^\n]+)/i) || text.match(/requested by\s+(dr\.?\s*\w+[^.;\n]{0,30})/i) || text.match(/referred by\s+(dr\.?\s*\w+[^.;\n]{0,30})/i);
+                    if (rpMatch) requestingProvider = (rpMatch[2] || rpMatch[1]).trim();
+                }
+                note += `I will communicate my findings and recommendations to ${requestingProvider}. A copy of this consultation report is being sent to the requesting physician.\n`;
+                changes.push('Added missing R3 (Report) documentation — communication back to requesting provider');
+            }
+        }
+
+        note += '\n═══════════════════════════════════════\nRISK ASSESSMENT\n═══════════════════════════════════════\n';
+        let riskAdded = false;
+        const hrMeds = result.medications.filter(m => m.isHighRisk);
+        if (hrMeds.length > 0) { note += `High-risk drug management: ${hrMeds.map(m => m.name).join(', ')}. Monitoring plan in place. Risks, benefits, and alternatives discussed.\n`; riskAdded = true; changes.push('Added high-risk medication documentation (MDM Element 3)'); }
+        if (/increas|add|start|new.*mg|changed|adjust/i.test(text)) { note += 'Prescription drug management: Medication changes made today. Risks, benefits, and alternatives discussed. Side effect profile reviewed.\n'; riskAdded = true; }
+        if (/referral|referred|diabetes educator/i.test(text)) { note += 'Referral(s) placed as documented in the plan.\n'; riskAdded = true; }
+        if (!riskAdded) { note += 'Risk assessment: Treatment plan involves ongoing management. Risks and benefits discussed.\n'; changes.push('Added risk assessment documentation'); }
+        note += '\n═══════════════════════════════════════\nTIME\n═══════════════════════════════════════\n';
+        if (!result.docs.timeDoc) {
+            let timeMin = 30;
+            const targetCpt = result.nextCpt || result.cpt;
+            const lastDigit = parseInt(targetCpt.code.slice(-1));
+            if (result.visitType === 'office' || result.visitType === 'telehealth') { timeMin = result.patientType === 'new' ? [0,0,20,35,50,65][lastDigit] || 30 : [0,0,15,25,35,45][lastDigit] || 30; }
+            else if (result.visitType === 'ed') timeMin = [0,10,20,30,45,60][lastDigit] || 30;
+            else if (result.visitType === 'consult-outpatient') timeMin = [0,15,30,40,60,80][lastDigit] || 40;
+            else if (result.visitType === 'consult-inpatient') timeMin = [0,20,40,55,80,110][lastDigit] || 55;
+            else timeMin = 35;
+            note += `Total time spent on the date of encounter: ___ minutes.\nThis includes face-to-face time as well as time reviewing records, ordering/reviewing tests, documenting, and coordinating care.\n`;
+            changes.push('Added time attestation template for time-based coding');
+        } else note += 'Time documentation present in original note.\n';
+        note += '\n═══════════════════════════════════════\n';
+        changes.unshift('Note reorganized into structured format with clear section headers');
+        return { note, changes };
+    }
+
+    // ===================== GAP ANALYSIS =====================
+    function generateGaps(result) {
+        const gaps = [];
+        if (result.isPreventive) return [{ element: 'Preventive Coding', text: 'Preventive visits use age-based coding, not MDM. Ensure all age-appropriate screenings and counseling are documented. If a significant E&M problem is also addressed, consider adding a separate E&M code with modifier -25.', color: 'teal' }];
+
+        if (result.isConsult && result.consult3Rs) {
+            if (!result.consult3Rs.r1.found) gaps.push({ element: 'Consult R1 — Request', text: 'REQUIRED: Document who requested this consultation. Add: "This consultation was requested by [Dr. Name, Specialty]."', color: 'red' });
+            if (!result.consult3Rs.r3.found) gaps.push({ element: 'Consult R3 — Report', text: 'REQUIRED: Document communication back to requesting provider. Add: "I will communicate my findings and recommendations to [requesting provider]."', color: 'red' });
+        }
+
+        const nextLevel = result.nextLevel;
+        if (!nextLevel) { gaps.push({ element: 'All Elements', text: 'This note already supports the highest MDM level. No further MDM optimization needed.', color: 'green' }); return gaps; }
+        const pIdx = LEVEL_NAMES.indexOf(result.problems.level);
+        const dIdx = LEVEL_NAMES.indexOf(result.data.level);
+        const rIdx = LEVEL_NAMES.indexOf(result.risk.level);
+        const targetIdx = LEVEL_NAMES.indexOf(nextLevel);
+        if (pIdx < targetIdx) {
+            let suggestion = nextLevel === 'High' ? 'Document severe exacerbation, threat to life/bodily function, or acute illness requiring hospitalization.' : nextLevel === 'Moderate' ? 'Document 2+ chronic illnesses, or one with exacerbation/progression, or a new problem requiring additional workup.' : 'Document 2+ self-limited problems or 1 stable chronic illness.';
+            gaps.push({ element: 'Element 1 (Problems)', text: suggestion, color: 'orange' });
+        }
+        if (dIdx < targetIdx) {
+            let suggestion = nextLevel === 'High' ? 'Document independent interpretation of tests AND discussion with an external physician.' : nextLevel === 'Moderate' ? 'Add review of external records AND ordered/reviewed tests with assessment, OR independent test interpretation.' : 'Document ordering or reviewing at least one test with results.';
+            gaps.push({ element: 'Element 2 (Data)', text: suggestion, color: 'yellow' });
+        }
+        if (rIdx < targetIdx) {
+            let suggestion = nextLevel === 'High' ? 'Document drug therapy requiring intensive monitoring (insulin titration, anticoagulation), decision regarding hospitalization, or parenteral controlled substances.' : nextLevel === 'Moderate' ? 'Document a new prescription or medication dose change with clinical rationale.' : 'Document prescription drug management or follow-up scheduling.';
+            gaps.push({ element: 'Element 3 (Risk)', text: suggestion, color: 'red' });
+        }
+        if (gaps.length === 0) gaps.push({ element: 'Documentation', text: 'MDM elements support next level. Ensure documentation clearly reflects all clinical activities.', color: 'teal' });
+        return gaps;
+    }
+
+    // ===================== AI REPORT GENERATION =====================
+    function generateAIReport(result) {
+        const r = result;
+        let summary = '';
+        if (r.isPreventive) {
+            summary = `This is a preventive medicine visit. The note documents an age-appropriate wellness exam. Preventive visits are coded by patient age and new/established status, not by Medical Decision Making. `;
+            summary += `${r.conditions.length} condition(s) were detected in the note. `;
+            if (r.conditions.length > 0) summary += `If significant E&M services were provided beyond preventive care, consider appending a separate E&M code with modifier -25.`;
+        } else {
+            const visitLabel = r.isConsult ? (r.visitType === 'consult-outpatient' ? 'outpatient consultation' : 'inpatient consultation') : r.visitType.replace(/-/g,' ');
+            summary = `AI analysis of this ${visitLabel} note identified ${r.conditions.length} clinical condition(s)`;
+            if (r.medications.length > 0) summary += `, ${r.medications.length} medication(s)`;
+            if (r.dataElements.length > 0) summary += `, and ${r.dataElements.length} data element(s)`;
+            summary += `. `;
+            summary += `The Medical Decision Making was scored at the ${r.mdmLevel} level, supporting CPT ${r.cpt.code}. `;
+            if (r.isConsult && r.consultSpecialty) summary += `Detected consulting specialty: ${r.consultSpecialty}. `;
+            if (r.isConsult && r.consult3Rs) {
+                const rsStatus = [r.consult3Rs.r1.found, r.consult3Rs.r2.found, r.consult3Rs.r3.found];
+                const metCount = rsStatus.filter(Boolean).length;
+                summary += `Consult 3 R's: ${metCount}/3 requirements met. `;
+                if (metCount < 3) summary += `WARNING: Missing consult documentation requirements may result in claim denial. `;
+            }
+            const hrMeds = r.medications.filter(m => m.isHighRisk);
+            if (hrMeds.length > 0) summary += `${hrMeds.length} high-risk medication(s) identified (${hrMeds.map(m => m.name).join(', ')}). `;
+            if (r.socialDeterminants.length > 0) summary += `Social determinants: ${r.socialDeterminants.join(', ')}. `;
+            if (r.specialties.length > 0) summary += `Specialty context: ${r.specialties.join(', ')}. `;
+            summary += `Coding confidence: ${r.confidence}%.`;
+        }
+
+        let auditRisk = 'Low';
+        const auditReasons = [];
+        if (!r.isPreventive) {
+            const codeNum = parseInt(r.cpt.code.slice(-1));
+            if (codeNum >= 5) { auditRisk = 'Medium'; auditReasons.push('High-level codes (Level 5) are more frequently audited'); }
+            if (codeNum >= 4 && !r.docs.assessment) { auditRisk = 'High'; auditReasons.push('Moderate/High level code without clear assessment section'); }
+            if (!r.docs.plan) { auditRisk = 'High'; auditReasons.push('Missing plan documentation'); }
+            if (r.docs.hpiCount < 4) { auditReasons.push('HPI has fewer than 4 OLDCARTS elements — may appear under-documented'); if (auditRisk === 'Low') auditRisk = 'Medium'; }
+            if (!r.docs.timeDoc && codeNum >= 4) { auditReasons.push('No time documentation — time-based coding cannot be used as backup'); }
+            if (r.confidence < 70) { auditRisk = 'Medium'; auditReasons.push('Low coding confidence indicates potential documentation gaps'); }
+            if (r.isConsult && r.consult3Rs) {
+                if (!r.consult3Rs.r1.found) { auditRisk = 'High'; auditReasons.push('Missing R1 (Request) — consult requires documentation of requesting provider'); }
+                if (!r.consult3Rs.r3.found) { auditRisk = 'High'; auditReasons.push('Missing R3 (Report) — consult requires documentation of communication back to requesting provider'); }
+            }
+        }
+        if (auditReasons.length === 0) auditReasons.push('Documentation appears thorough and well-supported');
+
+        const compliance = [];
+        if (!r.docs.timeDoc) compliance.push('CMS requires that time documentation include ALL activities on the date of service, not just face-to-face time. Consider adding a time attestation.');
+        if (r.visitType === 'telehealth') compliance.push('Telehealth visits require modifier -95 or GT. Document that the visit was conducted via real-time audio/video and that the patient consented.');
+        if (r.isConsult) {
+            compliance.push('CMS/Medicare eliminated consultation codes (99241–99255) effective January 1, 2010. Verify that the payer accepts consultation codes before submitting. For Medicare patients, use office/outpatient or hospital care codes instead.');
+            compliance.push('Consultation notes require all 3 R\'s: Request (who requested), Render (you evaluated the patient), and Report (communicated findings back to requesting provider). Ensure all three are clearly documented.');
+        }
+        if (r.medications.filter(m => m.isHighRisk).length > 0) compliance.push('High-risk medications detected. Ensure monitoring plan, informed consent discussion, and risk/benefit analysis are documented.');
+        if (r.conditions.length >= 3 && !r.docs.ros) compliance.push('Multiple conditions addressed without documented ROS. Consider documenting a pertinent ROS for audit protection.');
+        compliance.push('Ensure all services billed were medically necessary and documented at the time of the encounter.');
+        if (!r.isPreventive && r.cpt.code.endsWith('5')) compliance.push('Level 5 codes should be reserved for visits with genuine high complexity. Ensure documentation substantiates this level.');
+
+        return { summary, auditRisk, auditReasons, compliance };
+    }
+
+    // ===================== RENDERING =====================
+    function renderResults() {
+        if (!analysisResult) return;
+        const r = analysisResult;
+        document.getElementById('empty-state').classList.add('hidden');
+        document.getElementById('results-panel').classList.remove('hidden');
+
+        // Set first tab active via inline styles
+        setTabStyles('tab-cpt');
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+        document.getElementById('tab-cpt').classList.remove('hidden');
+
+        const badge = document.getElementById('cpt-badge');
+        badge.textContent = r.cpt.code;
+        badge.className = 'level-badge ';
+        if (r.isPreventive) { badge.classList.add('level-teal'); }
+        else {
+            const codeNum = parseInt(r.cpt.code.slice(-1));
+            if (codeNum <= 2) badge.classList.add('level-gray');
+            else if (codeNum === 3) badge.classList.add('level-yellow');
+            else if (codeNum === 4) badge.classList.add('level-teal');
+            else badge.classList.add('level-green');
+        }
+        document.getElementById('cpt-description').textContent = CPT_DESCRIPTIONS[r.cpt.code] || r.cpt.code;
+
+        const specBadge = document.getElementById('consult-specialty-badge');
+        if (r.isConsult && r.consultSpecialty) {
+            specBadge.classList.remove('hidden');
+            document.getElementById('consult-specialty-text').textContent = `Detected Specialty: ${r.consultSpecialty}`;
+        } else {
+            specBadge.classList.add('hidden');
+        }
+
+        const cmsNotice = document.getElementById('cms-consult-notice');
+        if (r.isConsult) cmsNotice.classList.remove('hidden');
+        else cmsNotice.classList.add('hidden');
+
+        const telNote = document.getElementById('telehealth-modifier-note');
+        if (r.visitType === 'telehealth') {
+            telNote.classList.remove('hidden');
+            telNote.textContent = 'Telehealth visit: Append modifier -95 (synchronous telehealth) to the CPT code. Ensure documentation of real-time audio/video platform and patient consent.';
+        } else telNote.classList.add('hidden');
+
+        const prevPanel = document.getElementById('preventive-info-panel');
+        const mdmSection = document.getElementById('mdm-section');
+        if (r.isPreventive) {
+            prevPanel.classList.remove('hidden');
+            mdmSection.classList.add('hidden');
+            const age = parseInt(document.getElementById('patient-age').value) || 45;
+            document.getElementById('preventive-info-text').textContent = `Preventive medicine visits are coded by patient age (${age} years) and new/established status, not by MDM complexity. This code covers age-appropriate comprehensive history, examination, anticipatory guidance, and risk factor reduction. If a significant separately identifiable E&M service is provided, append a separate E&M code with modifier -25.`;
+            document.getElementById('cpt-summary').textContent = `Age-based preventive medicine code for ${age}-year-old ${r.patientType === 'new' || r.visitType === 'preventive-new' ? 'new' : 'established'} patient.`;
+        } else {
+            prevPanel.classList.add('hidden');
+            mdmSection.classList.remove('hidden');
+            let summaryText = `This note supports billing at Level ${LEVEL_NUMS[r.mdmLevel] || '?'} based on ${r.mdmLevel} Medical Decision Making.`;
+            if (r.isConsult) summaryText += ` (${r.visitType === 'consult-outpatient' ? 'Outpatient' : 'Inpatient'} Consultation)`;
+            document.getElementById('cpt-summary').textContent = summaryText;
+        }
+
+        document.getElementById('confidence-fill').style.width = r.confidence + '%';
+        const confLabel = r.confidence >= 85 ? 'High' : r.confidence >= 65 ? 'Moderate' : 'Low';
+        document.getElementById('confidence-label').textContent = `${confLabel} (${r.confidence}%)`;
+        const confFill = document.getElementById('confidence-fill');
+        confFill.className = 'confidence-fill ';
+        confFill.classList.add(r.confidence >= 85 ? 'bg-teal-500' : r.confidence >= 65 ? 'bg-yellow-500' : 'bg-orange-500');
+
+        if (!r.isPreventive) {
+            const tbody = document.getElementById('mdm-scorecard-body');
+            tbody.innerHTML = '';
+            const elements = [
+                { name: '1. Number & Complexity of Problems', data: r.problems },
+                { name: '2. Amount & Complexity of Data', data: r.data },
+                { name: '3. Risk of Complications', data: r.risk }
+            ];
+            elements.forEach(el => {
+                const tr = document.createElement('tr');
+                const evidenceText = el.data.evidence.slice(0,3).map(e => typeof e === 'string' ? e : e.text).join('; ');
+                tr.innerHTML = `<td class="px-4 py-3 font-medium text-sm text-slate-700">${el.name}</td><td class="px-4 py-3 text-xs text-slate-600">${evidenceText}</td><td class="px-4 py-3"><span class="text-xs font-semibold px-2.5 py-1 rounded-full ${LEVEL_CSS[el.data.level] || 'bg-slate-100 text-slate-500'}">${el.data.level}</span></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        const rsPanel = document.getElementById('consult-3rs-panel');
+        const rsWarning = document.getElementById('consult-3rs-warning');
+        const rsBody = document.getElementById('consult-3rs-body');
+        if (r.isConsult && r.consult3Rs) {
+            rsPanel.classList.remove('hidden');
+            rsBody.innerHTML = '';
+            const rItems = [
+                { key: 'r1', label: 'R1 — REQUEST (Requesting Provider)', data: r.consult3Rs.r1, missing: 'REQUIRED: Document who requested this consultation. Add "This consultation was requested by [Dr. Name, Specialty]."' },
+                { key: 'r2', label: 'R2 — RENDER (Evaluation Performed)', data: r.consult3Rs.r2, missing: 'REQUIRED: Document that you personally evaluated the patient. Add "I evaluated the patient and performed a comprehensive assessment."' },
+                { key: 'r3', label: 'R3 — REPORT (Communication Back)', data: r.consult3Rs.r3, missing: 'REQUIRED: Document communication of findings to requesting provider. Add "I will communicate my findings and recommendations to the requesting provider."' },
+            ];
+            let anyMissing = false;
+            rItems.forEach(item => {
+                const div = document.createElement('div');
+                if (item.data.found) {
+                    div.className = 'flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl p-3';
+                    div.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5"></i><div><p class="text-xs font-semibold text-green-800">${item.label}</p><p class="text-xs text-green-700 mt-0.5">${item.data.evidence}</p></div>`;
+                } else {
+                    anyMissing = true;
+                    div.className = 'flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3';
+                    div.innerHTML = `<i data-lucide="x-circle" class="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"></i><div><p class="text-xs font-semibold text-red-800">${item.label}</p><p class="text-xs text-red-700 mt-0.5">${item.missing}</p></div>`;
+                }
+                rsBody.appendChild(div);
+            });
+            if (anyMissing) rsWarning.classList.remove('hidden');
+            else rsWarning.classList.add('hidden');
+        } else {
+            rsPanel.classList.add('hidden');
+        }
+
+        const docGrid = document.getElementById('doc-completeness');
+        docGrid.innerHTML = '';
+        [{ label:'Chief Complaint', ok:r.docs.chiefComplaint },{ label:'HPI', ok:r.docs.hpiCount>=1 },{ label:'Review of Systems', ok:r.docs.ros },{ label:'Physical Exam', ok:r.docs.physicalExam },{ label:'Assessment', ok:r.docs.assessment },{ label:'Plan', ok:r.docs.plan },{ label:'Time Documentation', ok:r.docs.timeDoc }].forEach(item => {
+            const div = document.createElement('div');
+            div.className = `flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${item.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`;
+            div.innerHTML = `<i data-lucide="${item.ok?'check-circle':'alert-circle'}" class="w-4 h-4"></i> ${item.label}`;
+            docGrid.appendChild(div);
+        });
+
+        const hpiDiv = document.getElementById('hpi-meter');
+        hpiDiv.innerHTML = '';
+        const hpiNames = { onset:'Onset',location:'Location',duration:'Duration',character:'Character',aggravating:'Aggravating',relieving:'Relieving',timing:'Timing',severity:'Severity' };
+        const countLabel = document.createElement('p');
+        countLabel.className = 'text-sm font-semibold text-navy-900 mb-1';
+        countLabel.textContent = `${r.docs.hpiCount}/8 OLDCARTS elements documented`;
+        hpiDiv.appendChild(countLabel);
+        const barOuter = document.createElement('div');
+        barOuter.className = 'w-full bg-slate-100 rounded-full h-3 mb-3';
+        const barInner = document.createElement('div');
+        barInner.className = 'h-3 rounded-full bg-teal-500 transition-all';
+        barInner.style.width = `${(r.docs.hpiCount/8)*100}%`;
+        barOuter.appendChild(barInner);
+        hpiDiv.appendChild(barOuter);
+        const hpiGrid = document.createElement('div');
+        hpiGrid.className = 'grid grid-cols-2 sm:grid-cols-4 gap-1.5';
+        Object.entries(hpiNames).forEach(([key,label]) => {
+            const tag = document.createElement('span');
+            const found = r.docs.hpiElements[key];
+            tag.className = `text-xs px-2 py-1 rounded-lg font-medium text-center ${found?'bg-teal-50 text-teal-700':'bg-slate-100 text-slate-400'}`;
+            tag.textContent = `${found?'✓':'—'} ${label}`;
+            hpiGrid.appendChild(tag);
+        });
+        hpiDiv.appendChild(hpiGrid);
+
+        const rationaleContent = document.getElementById('rationale-content');
+        rationaleContent.innerHTML = '';
+        if (!r.isPreventive) {
+            const sections = [
+                { title: `MDM Level: ${r.mdmLevel}`, desc: 'Determined by the "2 of 3" rule — at least 2 MDM elements meet this level.' },
+                { title: `Problems (${r.problems.level})`, items: r.problems.evidence },
+                { title: `Data (${r.data.level})`, items: r.data.evidence },
+                { title: `Risk (${r.risk.level})`, items: r.risk.evidence },
+            ];
+            sections.forEach(sec => {
+                const div = document.createElement('div');
+                div.innerHTML = `<p class="text-sm font-semibold text-navy-900 mb-1">${sec.title}</p>`;
+                if (sec.desc) div.innerHTML += `<p class="text-xs text-slate-500 mb-1">${sec.desc}</p>`;
+                if (sec.items) {
+                    sec.items.forEach(item => {
+                        const text = typeof item === 'string' ? item : item.text;
+                        const source = typeof item === 'object' ? item.source : '';
+                        const p = document.createElement('p');
+                        p.className = 'text-xs text-slate-600';
+                        p.textContent = '• ' + text;
+                        div.appendChild(p);
+                        if (source && source.length > 10) {
+                            const q = document.createElement('div');
+                            q.className = 'evidence-quote';
+                            q.textContent = source.substring(0, 200) + (source.length > 200 ? '...' : '');
+                            div.appendChild(q);
+                        }
+                    });
+                }
+                rationaleContent.appendChild(div);
+            });
+        }
+
+        if (r.canUpgrade && r.nextCpt) {
+            document.getElementById('target-cpt-text').innerHTML = `<strong>Target: ${r.nextCpt.code}</strong> (${r.nextLevel} MDM) — ${CPT_DESCRIPTIONS[r.nextCpt.code] || ''}`;
+        } else if (r.isPreventive) {
+            document.getElementById('target-cpt-text').innerHTML = `<strong>Preventive visit (${r.cpt.code})</strong> — optimization is based on documentation completeness, not MDM level.`;
+        } else {
+            document.getElementById('target-cpt-text').innerHTML = `<strong>Already at highest level (${r.cpt.code})</strong> — no further MDM optimization available.`;
+        }
+
+        const gapDiv = document.getElementById('gap-analysis');
+        gapDiv.innerHTML = '';
+        generateGaps(r).forEach(g => {
+            const colorMap = { orange:'bg-orange-50 border-orange-200 text-orange-800', yellow:'bg-yellow-50 border-yellow-200 text-yellow-800', red:'bg-red-50 border-red-200 text-red-700', green:'bg-green-50 border-green-200 text-green-700', teal:'bg-teal-50 border-teal-200 text-teal-700' };
+            const div = document.createElement('div');
+            div.className = `rounded-xl border p-4 ${colorMap[g.color]||colorMap.teal}`;
+            div.innerHTML = `<p class="text-xs font-semibold uppercase tracking-wide mb-1">${g.element}</p><p class="text-sm leading-relaxed">${g.text}</p>`;
+            gapDiv.appendChild(div);
+        });
+
+        const optimized = generateOptimizedNote(r);
+        document.getElementById('optimized-note').textContent = optimized.note;
+
+        const targetCode = (r.canUpgrade && r.nextCpt) ? r.nextCpt.code : r.cpt.code;
+        document.getElementById('impact-original').textContent = r.cpt.code;
+        document.getElementById('impact-optimized').textContent = targetCode;
+        const rvuDelta = ((RVU_MAP[targetCode]||0)-(RVU_MAP[r.cpt.code]||0)).toFixed(2);
+        document.getElementById('impact-rvu').textContent = rvuDelta > 0 ? `+${rvuDelta} RVU potential increase` : 'Already at maximum RVU';
+
+        const changedList = document.getElementById('what-changed');
+        changedList.innerHTML = '';
+        optimized.changes.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'flex items-start gap-2 text-sm text-slate-700';
+            li.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5"></i> <span>${c}</span>`;
+            changedList.appendChild(li);
+        });
+
+        const report = generateAIReport(r);
+        document.getElementById('ai-exec-summary').textContent = report.summary;
+
+        const condBody = document.getElementById('ai-conditions-body');
+        condBody.innerHTML = '';
+        if (r.conditions.length === 0) { condBody.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-xs text-slate-400 text-center">No conditions detected</td></tr>'; }
+        r.conditions.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            tr.innerHTML = `<td class="px-4 py-2.5 text-xs font-medium text-slate-700">${c.name}</td><td class="px-4 py-2.5 text-xs text-slate-600">${c.severity}</td><td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full ${c.chronic?'bg-blue-50 text-blue-700':'bg-orange-50 text-orange-700'}">${c.status}</span></td>`;
+            condBody.appendChild(tr);
+        });
+
+        const medBody = document.getElementById('ai-meds-body');
+        medBody.innerHTML = '';
+        if (r.medications.length === 0) { medBody.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-xs text-slate-400 text-center">No medications detected</td></tr>'; }
+        r.medications.forEach(m => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            const actionColor = m.actionType==='new'?'bg-green-50 text-green-700':m.actionType==='change'?'bg-yellow-50 text-yellow-700':m.actionType==='discontinue'?'bg-red-50 text-red-700':'bg-slate-100 text-slate-600';
+            tr.innerHTML = `<td class="px-4 py-2.5 text-xs font-medium text-slate-700">${m.name}</td><td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full ${actionColor}">${m.action}</span></td><td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full ${m.isHighRisk?'bg-red-50 text-red-700 font-semibold':'bg-slate-100 text-slate-600'}">${m.isHighRisk?'HIGH RISK':'Standard'}</span></td>`;
+            medBody.appendChild(tr);
+        });
+
+        const dataBody = document.getElementById('ai-data-body');
+        dataBody.innerHTML = '';
+        if (r.dataElements.length === 0) { dataBody.innerHTML = '<tr><td colspan="3" class="px-4 py-3 text-xs text-slate-400 text-center">No data elements detected</td></tr>'; }
+        r.dataElements.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            tr.innerHTML = `<td class="px-4 py-2.5 text-xs font-medium text-slate-700">${d.name}</td><td class="px-4 py-2.5 text-xs text-slate-600">${d.category}</td><td class="px-4 py-2.5 text-xs text-slate-600">${d.credit}</td>`;
+            dataBody.appendChild(tr);
+        });
+
+        const auditDiv = document.getElementById('ai-audit-risk');
+        const auditColor = report.auditRisk==='Low'?'border-green-200 bg-green-50':report.auditRisk==='Medium'?'border-yellow-200 bg-yellow-50':'border-red-200 bg-red-50';
+        const auditTextColor = report.auditRisk==='Low'?'text-green-800':report.auditRisk==='Medium'?'text-yellow-800':'text-red-800';
+        auditDiv.className = `rounded-2xl border p-4 space-y-2 ${auditColor}`;
+        auditDiv.innerHTML = `<p class="text-sm font-semibold ${auditTextColor}">Audit Risk: ${report.auditRisk}</p>`;
+        report.auditReasons.forEach(reason => {
+            const p = document.createElement('p');
+            p.className = `text-xs ${auditTextColor}`;
+            p.textContent = '• ' + reason;
+            auditDiv.appendChild(p);
+        });
+
+        const compDiv = document.getElementById('ai-compliance');
+        compDiv.innerHTML = '';
+        report.compliance.forEach(note => {
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-2 bg-slate-50 rounded-xl p-3';
+            div.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-teal-600 flex-shrink-0 mt-0.5"></i><p class="text-xs text-slate-700">${note}</p>`;
+            compDiv.appendChild(div);
+        });
+
+        // Re-initialize icons for dynamically created elements
+        lucide.createIcons();
+    }
+
+    // ===================== HELPER FUNCTIONS =====================
+    function updateCPTHint() {
+        const hint = document.getElementById('cpt-range-hint');
+        const visitType = document.getElementById('visit-type').value;
+        if (visitType === 'office' || visitType === 'telehealth') {
+            hint.textContent = currentPatientType === 'new' ? 'CPT 99202–99205' : 'CPT 99211–99215';
+        } else if (visitType === 'consult-outpatient') {
+            hint.textContent = 'CPT 99241–99245';
+        } else if (visitType === 'consult-inpatient') {
+            hint.textContent = 'CPT 99251–99255';
+        } else if (visitType === 'ed') {
+            hint.textContent = 'CPT 99281–99285';
+        } else if (visitType === 'inpatient-initial') {
+            hint.textContent = 'CPT 99221–99223';
+        } else if (visitType === 'inpatient-subsequent') {
+            hint.textContent = 'CPT 99231–99233';
+        } else if (visitType === 'nf-initial') {
+            hint.textContent = 'CPT 99304–99306';
+        } else if (visitType === 'nf-subsequent') {
+            hint.textContent = 'CPT 99307–99310';
+        } else if (visitType.startsWith('preventive')) {
+            hint.textContent = visitType === 'preventive-new' ? 'CPT 99381–99387' : 'CPT 99391–99397';
+        }
+    }
+
+    function handleVisitTypeChange() {
+        const visitType = document.getElementById('visit-type').value;
+        const ageGroup = document.getElementById('age-input-group');
+        if (visitType.startsWith('preventive')) {
+            ageGroup.classList.remove('hidden');
+        } else {
+            ageGroup.classList.add('hidden');
+        }
+        updateCPTHint();
+        saveState();
+    }
+
+    function runAnalysis() {
+        const noteText = document.getElementById('clinical-note').value.trim();
+        if (!noteText) {
+            alert('Please paste a clinical note before analyzing.');
+            return;
+        }
+        const visitType = document.getElementById('visit-type').value;
+        analysisResult = analyzeNote(noteText, currentPatientType, visitType);
+        renderResults();
+        saveState();
+
+        // Scroll to results on mobile
+        if (window.innerWidth < 768) {
+            document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    function resetApp() {
+        document.getElementById('clinical-note').value = '';
+        analysisResult = null;
+        document.getElementById('results-panel').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+        // Reset to first tab
+        setTabStyles('tab-cpt');
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+        document.getElementById('tab-cpt').classList.remove('hidden');
+        saveState();
+    }
+
+    function switchTab(tabId) {
+        setTabStyles(tabId);
+        document.querySelectorAll('.tab-content').forEach(tc => {
+            tc.classList.add('hidden');
+        });
+        const target = document.getElementById(tabId);
+        if (target) target.classList.remove('hidden');
+    }
+
+    // ===================== EVENT LISTENERS =====================
+    // Patient type buttons
+    document.querySelectorAll('#patient-type-group .patient-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentPatientType = btn.dataset.value;
+            setPatientBtnStyles();
+            updateCPTHint();
+            saveState();
+        });
+    });
+
+    // Visit type select
+    document.getElementById('visit-type').addEventListener('change', handleVisitTypeChange);
+
+    // Analyze buttons
+    document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
+    document.getElementById('nav-analyze-btn').addEventListener('click', runAnalysis);
+    document.getElementById('mob-analyze-btn').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.add('hidden');
+        runAnalysis();
+    });
+
+    // Reset buttons
+    document.getElementById('nav-reset-btn').addEventListener('click', resetApp);
+    document.getElementById('mob-reset-btn').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.add('hidden');
+        resetApp();
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn-result').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Sample note dropdown
+    document.getElementById('sample-btn').addEventListener('click', () => {
+        document.getElementById('sample-dropdown').classList.toggle('hidden');
+    });
+
+    document.querySelectorAll('.sample-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            const sample = opt.dataset.sample;
+            if (SAMPLE_NOTES[sample]) {
+                document.getElementById('clinical-note').value = SAMPLE_NOTES[sample];
+                // Auto-set visit type
+                if (sample === 'ed') document.getElementById('visit-type').value = 'ed';
+                else if (sample === 'nf') document.getElementById('visit-type').value = 'nf-initial';
+                else if (sample === 'telehealth') document.getElementById('visit-type').value = 'telehealth';
+                else if (sample === 'consult-outpatient') document.getElementById('visit-type').value = 'consult-outpatient';
+                else if (sample === 'consult-inpatient') document.getElementById('visit-type').value = 'consult-inpatient';
+                else document.getElementById('visit-type').value = 'office';
+                handleVisitTypeChange();
+            }
+            document.getElementById('sample-dropdown').classList.add('hidden');
+        });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#sample-btn') && !e.target.closest('#sample-dropdown')) {
+            document.getElementById('sample-dropdown').classList.add('hidden');
+        }
+    });
+
+    // Mobile menu
+    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.remove('hidden');
+    });
+    document.getElementById('mobile-menu-close').addEventListener('click', () => {
+        document.getElementById('mobile-menu').classList.add('hidden');
+    });
+
+    // Rationale toggle
+    document.getElementById('rationale-toggle').addEventListener('click', () => {
+        const content = document.getElementById('rationale-content');
+        const chevron = document.getElementById('rationale-chevron');
+        content.classList.toggle('hidden');
+        chevron.style.transform = content.classList.contains('hidden') ? '' : 'rotate(90deg)';
+    });
+
+    // Copy button
+    document.getElementById('copy-note-btn').addEventListener('click', () => {
+        const noteText = document.getElementById('optimized-note').textContent;
+        navigator.clipboard.writeText(noteText).then(() => {
+            const btn = document.getElementById('copy-note-btn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
+            lucide.createIcons();
+            btn.classList.add('bg-green-100', 'text-green-700');
+            btn.classList.remove('bg-slate-100', 'text-slate-600');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const restoreTimer = window.setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        lucide.createIcons();
+                        btn.classList.remove('bg-green-100', 'text-green-700');
+                        btn.classList.add('bg-slate-100', 'text-slate-600');
+                    }, 1500);
+                });
+            });
+        });
+    });
+
+    // Download button
+    document.getElementById('download-note-btn').addEventListener('click', () => {
+        const noteText = document.getElementById('optimized-note').textContent;
+        const blob = new Blob([noteText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `optimized_note_${new Date().toISOString().slice(0,10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Age input change
+    document.getElementById('patient-age').addEventListener('change', saveState);
+    document.getElementById('clinical-note').addEventListener('input', saveState);
+
+    // Initialize
+    lucide.createIcons();
+    loadState();
+    // Apply initial patient button styles and tab styles via inline approach
+    setPatientBtnStyles();
+    setTabStyles('tab-cpt');
+    </script>
